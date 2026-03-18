@@ -2,7 +2,7 @@ import concurrent.futures
 import ipaddress
 from icmplib import ping
 
-# Try relative import first, fallback to absolute or direct module import
+# Essayer d'abord l'importation relative, puis l'importation absolue ou directe du module
 try:
     from .utils import parse_subnet
 except ImportError:
@@ -13,26 +13,27 @@ except ImportError:
 
 def ping_host(ip, timeout=1):
     """
-    Pings a single IP address using icmplib.
-    
-    Args:
-        ip (str): The IP address to ping.
-        timeout (float): Timeout for the ping in seconds. Default is 1.
-        
-    Returns:
-        dict: A dictionary containing 'ip', 'alive' (bool), and 'latency' (float or None).
+    Envoie un ping à une seule adresse IP en utilisant icmplib.
     """
     try:
-        # Note: icmplib's default `privileged=True` requires root/administrator privileges.
-        # If running as standard user, you might need to add `privileged=False` here and configure OS.
         host = ping(str(ip), count=1, timeout=timeout)
+        #str(ip) → 
+        #convertit l'adresse IP en chaîne de caractères
+        #count=1 → 
+        #nombre de pings à envoyer
+        #timeout=timeout → 
+        #délai d'attente pour chaque ping   
         return {
             "ip": str(ip),
             "alive": host.is_alive,
+            #host.is_alive → 
+            #true si elle est allumer et false si eteinte
             "latency": host.avg_rtt if host.is_alive else None
+            #host.avg_rtt → 
+            #temps moyen de réponse en millisecondes si ne repond pas on envoie None
         }
     except Exception:
-        # Catch errors such as SocketPermissionError and return as dead
+        # Capturer les erreurs et retourner comme mort par exemple l'adresse ip n'est pas valide ou le ping n'a pas repondu 
         return {
             "ip": str(ip),
             "alive": False,
@@ -41,31 +42,40 @@ def ping_host(ip, timeout=1):
 
 def scan_subnet(subnet, timeout=1, max_workers=100):
     """
-    Pings all hosts in a subnet concurrently to discover live hosts.
-    
-    Args:
-        subnet (str): The CIDR string representation of the subnet (e.g., '192.168.1.0/24').
-        timeout (float): Timeout per ping in seconds. Default is 1.
-        max_workers (int): Maximum number of threads to use. Default is 100.
-        
-    Returns:
-        list: A sorted list of dicts representing the alive hosts.
+    Pingue tous les hôtes d'un sous-réseau simultanément pour découvrir les hôtes actifs. 
     """
+    #ips est une liste d'adresses ip
     ips = parse_subnet(subnet)
+    #parse_subnet → 
+    #appele de la fonction parse_subnet du module utils pour obtenir une liste d'adresses ip
     alive_hosts = []
+    #alive_hosts → 
+    #liste qui va contenir les adresses ip des hôtes actifs
     
-    # Use ThreadPoolExecutor to run tasks concurrently
+    # Je crée une équipe de 100 agents, chaque agent va pinger une IP
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(ping_host, ip, timeout): ip for ip in ips}
         
+        # Je donne à chaque agent une tâche : ping_host(ip, timeout)
+        # futures est un dictionnaire qui associe chaque tâche à l'adresse IP correspondante
+        """
+        Ce qui se passe réellement :**
+```
+executor.submit(ping_host, "192.168.1.1") → Thread 1 démarre
+executor.submit(ping_host, "192.168.1.2") → Thread 2 démarre
+executor.submit(ping_host, "192.168.1.3") → Thread 3 démarre
+... 100 threads en parallèle ...
+        """
+        futures = {executor.submit(ping_host, ip, timeout): ip for ip in ips}
+    
         for future in concurrent.futures.as_completed(futures):
+            #une fois que chaque agent a terminé son travail, je récupère son résultat
             result = future.result()
             if result.get("alive"):
-                # Print live host details as they are discovered
+                # Afficher les détails de l'hôte actif au fur et à mesure de leur découverte
                 print(f"[+] Host {result['ip']:<15} is alive (Latency: {result['latency']} ms)")
                 alive_hosts.append(result)
                 
-    # Sort hosts numerically by IP address instead of lexicographically
+#Trie par ordre numérique
     alive_hosts.sort(key=lambda x: ipaddress.ip_address(x["ip"]))
     
     return alive_hosts
