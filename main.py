@@ -1,6 +1,6 @@
 import sys
 
-# Attempt to load Colorama for colored output
+# Tentative de chargement de Colorama pour la sortie colorée
 try:
     from colorama import Fore, Style, init
     init(autoreset=True)
@@ -15,17 +15,17 @@ from scanner.host_discovery import scan_subnet
 
 def display_table(hosts):
     """
-    Displays the list of hosts in a clean formatting table.
+    Affiche la liste des hôtes dans un tableau bien formaté.
     """
     column_ip, column_status, column_latency = "IP Address", "Status", "Latency (ms)"
     
-    # Table Header
+    # En-tête du tableau
     print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
     print(f"| {column_ip:<15} | {column_status:<10} | {column_latency:<13} |")
     print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
     
     if not hosts:
-        # Handle the case where no hosts were returned
+        # Gérer le cas où aucun hôte n'a été retourné
         message = "No alive hosts found".ljust(48)
         print(f"| {Fore.YELLOW}{message}{Style.RESET_ALL} |")
         print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
@@ -36,14 +36,14 @@ def display_table(hosts):
         alive = host.get("alive", False)
         latency = host.get("latency")
         
-        # Determine the status and apply corresponding coloring
+        # Déterminer le statut et appliquer la coloration correspondante
         status_text = "Up" if alive else "Down"
         status_color = Fore.GREEN if alive else Fore.RED
         
-        # Format the latency
+        # Formater la latence
         latency_str = f"{latency:.2f}" if latency is not None else "N/A"
         
-        # Applying padding
+        # Application de l'espacement
         ip_padded = ip.ljust(15)
         status_padded = status_text.ljust(10)
         latency_padded = latency_str.ljust(13)
@@ -53,9 +53,9 @@ def display_table(hosts):
     print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
 
 def main():
-    print(f"{Fore.CYAN}=========================================={Style.RESET_ALL}")
-    print(f"{Fore.CYAN}       SMART NETWORK MAPPER SCANNER       {Style.RESET_ALL}")
-    print(f"{Fore.CYAN}=========================================={Style.RESET_ALL}")
+    print(f"{Fore.CYAN}=========================================================={Style.RESET_ALL}")
+    print(f"{Fore.CYAN}       SMART NETWORK MAPPER SCANNER-BY AMINE NAHLI       {Style.RESET_ALL}")
+    print(f"{Fore.CYAN}=========================================================={Style.RESET_ALL}")
     
     while True:
         subnet = input("\nEnter the target subnet in CIDR format (e.g., 192.168.1.0/24): ").strip()
