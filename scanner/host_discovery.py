@@ -1,5 +1,6 @@
 import concurrent.futures
 import ipaddress
+import socket
 from icmplib import ping
 
 # Essayer d'abord l'importation relative, puis l'importation absolue ou directe du module
@@ -10,6 +11,13 @@ except ImportError:
         from scanner.utils import parse_subnet
     except ImportError:
         from utils import parse_subnet
+
+def get_hostname(ip):
+    try:
+        hostname, _, _ = socket.gethostbyaddr(str(ip))
+        return hostname
+    except Exception:
+        return 'Unknown'
 
 def ping_host(ip, timeout=1):
     """
@@ -25,6 +33,7 @@ def ping_host(ip, timeout=1):
         #délai d'attente pour chaque ping   
         return {
             "ip": str(ip),
+            "hostname": get_hostname(ip),
             "alive": host.is_alive,
             #host.is_alive → 
             #true si elle est allumer et false si eteinte
@@ -36,6 +45,7 @@ def ping_host(ip, timeout=1):
         # Capturer les erreurs et retourner comme mort par exemple l'adresse ip n'est pas valide ou le ping n'a pas repondu 
         return {
             "ip": str(ip),
+            "hostname": get_hostname(ip),
             "alive": False,
             "latency": None
         }

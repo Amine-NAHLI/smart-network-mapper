@@ -17,22 +17,23 @@ def display_table(hosts):
     """
     Affiche la liste des hôtes dans un tableau bien formaté.
     """
-    column_ip, column_status, column_latency = "IP Address", "Status", "Latency (ms)"
+    column_ip, column_hostname, column_status, column_latency = "IP Address", "Hostname", "Status", "Latency (ms)"
     
     # En-tête du tableau
-    print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
-    print(f"| {column_ip:<15} | {column_status:<10} | {column_latency:<13} |")
-    print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
+    print("+" + "-"*17 + "+" + "-"*22 + "+" + "-"*12 + "+" + "-"*15 + "+")
+    print(f"| {column_ip:<15} | {column_hostname:<20} | {column_status:<10} | {column_latency:<13} |")
+    print("+" + "-"*17 + "+" + "-"*22 + "+" + "-"*12 + "+" + "-"*15 + "+")
     
     if not hosts:
         # Gérer le cas où aucun hôte n'a été retourné
-        message = "No alive hosts found".ljust(48)
+        message = "No alive hosts found".ljust(67)
         print(f"| {Fore.YELLOW}{message}{Style.RESET_ALL} |")
-        print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
+        print("+" + "-"*17 + "+" + "-"*22 + "+" + "-"*12 + "+" + "-"*15 + "+")
         return
         
     for host in hosts:
         ip = host.get("ip", "Unknown")
+        hostname = str(host.get("hostname", "Unknown"))
         alive = host.get("alive", False)
         latency = host.get("latency")
         
@@ -45,12 +46,13 @@ def display_table(hosts):
         
         # Application de l'espacement
         ip_padded = ip.ljust(15)
+        hostname_padded = hostname[:20].ljust(20)
         status_padded = status_text.ljust(10)
         latency_padded = latency_str.ljust(13)
         
-        print(f"| {ip_padded} | {status_color}{status_padded}{Style.RESET_ALL} | {latency_padded} |")
+        print(f"| {ip_padded} | {hostname_padded} | {status_color}{status_padded}{Style.RESET_ALL} | {latency_padded} |")
         
-    print("+" + "-"*17 + "+" + "-"*12 + "+" + "-"*15 + "+")
+    print("+" + "-"*17 + "+" + "-"*22 + "+" + "-"*12 + "+" + "-"*15 + "+")
 
 def main():
     print(f"{Fore.CYAN}=========================================================={Style.RESET_ALL}")
