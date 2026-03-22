@@ -1,28 +1,40 @@
 import concurrent.futures
 import ipaddress
 import socket
+import nmap
 from icmplib import ping
 
 # Essayer d'abord l'importation relative, puis l'importation absolue ou directe du module
 try:
     from .utils import parse_subnet
+    from .device_info import get_device_info
 except ImportError:
     try:
         from scanner.utils import parse_subnet
+        from scanner.device_info import get_device_info
     except ImportError:
         from utils import parse_subnet
+        from device_info import get_device_info
 
 def get_hostname(ip):
     try:
+        #gethostbyaddr → 
+        #convertit l'adresse IP en nom d'hôte en utilisant le DNS
+        #hostname → 
+        #nom d'hôte
+        #_ → 
+        #on ignore les autres valeurs
         hostname, _, _ = socket.gethostbyaddr(str(ip))
+        
         return hostname
     except Exception:
         return 'Unknown'
 
-def ping_host(ip, timeout=1):
+def ping_host(ip, nm, timeout=1):
     """
     Envoie un ping à une seule adresse IP en utilisant icmplib.
     """
+    device_info = get_device_info(str(ip), nm)
     try:
         host = ping(str(ip), count=1, timeout=timeout)
         #str(ip) → 
@@ -33,7 +45,8 @@ def ping_host(ip, timeout=1):
         #délai d'attente pour chaque ping   
         return {
             "ip": str(ip),
-            "hostname": get_hostname(ip),
+            "hostname": device_info.get("hostname", "Unknown"),
+            "mac": device_info.get("mac", "Unknown"),
             "alive": host.is_alive,
             #host.is_alive → 
             #true si elle est allumer et false si eteinte
@@ -45,7 +58,9 @@ def ping_host(ip, timeout=1):
         # Capturer les erreurs et retourner comme mort par exemple l'adresse ip n'est pas valide ou le ping n'a pas repondu 
         return {
             "ip": str(ip),
-            "hostname": get_hostname(ip),
+            "hostname": device_info.get("hostname", "Unknown"),
+            "mac": device_info.get("mac", "Unknown"),
+
             "alive": False,
             "latency": None
         }
@@ -62,6 +77,9 @@ def scan_subnet(subnet, timeout=1, max_workers=100):
     #alive_hosts → 
     #liste qui va contenir les adresses ip des hôtes actifs
     
+    nm = nmap.PortScanner()
+    nm.scan(hosts=str(subnet), arguments='-sn')
+    
     # Je crée une équipe de 100 agents, chaque agent va pinger une IP
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         
@@ -75,7 +93,7 @@ executor.submit(ping_host, "192.168.1.2") → Thread 2 démarre
 executor.submit(ping_host, "192.168.1.3") → Thread 3 démarre
 ... 100 threads en parallèle ...
         """
-        futures = {executor.submit(ping_host, ip, timeout): ip for ip in ips}
+        futures = {executor.submit(ping_host, ip, nm, timeout): ip for ip in ips}
     
         for future in concurrent.futures.as_completed(futures):
             #une fois que chaque agent a terminé son travail, je récupère son résultat
