@@ -19,10 +19,6 @@ def ping_host(ip, timeout=1):
     """
     try:
         host = ping(str(ip), count=1, timeout=timeout)
-        #str(ip) → convertit l'adresse IP en chaîne de caractères
-        #count=1 → nombre de pings à envoyer
-        #timeout=timeout → délai d'attente pour chaque ping
-        
         device = get_device_info(str(ip))
         
         return {
@@ -30,9 +26,7 @@ def ping_host(ip, timeout=1):
             "hostname": device.get("hostname", "Unknown"),
             "mac": device.get("mac", "Unknown"),
             "alive": host.is_alive,
-            #host.is_alive → true si allumée, false si éteinte
             "latency": host.avg_rtt if host.is_alive else None
-            #host.avg_rtt → temps moyen de réponse en ms
         }
     except Exception:
         # Capturer les erreurs : adresse invalide ou ping sans réponse
@@ -44,7 +38,7 @@ def ping_host(ip, timeout=1):
             "latency": None
         }
 
-def scan_subnet(subnet, timeout=1, max_workers=100):
+def scan_subnet(subnet, timeout=1, max_workers=200):
     """
     Pingue tous les hôtes d'un sous-réseau simultanément pour découvrir les hôtes actifs.
     """
