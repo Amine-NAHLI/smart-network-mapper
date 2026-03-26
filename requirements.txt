@@ -1,4 +1,5 @@
 icmplib
 scapy
 colorama
+tqdm
 pytest
