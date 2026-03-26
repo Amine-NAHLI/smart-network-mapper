@@ -49,7 +49,7 @@ def scan_subnet(subnet, timeout=1, max_workers=200):
     alive_hosts = []
     #alive_hosts → liste qui va contenir les adresses ip des hôtes actifs
 
-    # Je crée une équipe de 100 agents, chaque agent va pinger une IP
+    # Je crée une équipe de 200 agents, chaque agent va pinger une IP
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
 
         # Je donne à chaque agent une tâche : ping_host(ip, timeout)

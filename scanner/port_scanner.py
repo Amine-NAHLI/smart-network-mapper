@@ -1,37 +1,26 @@
 import socket
 import concurrent.futures
 
-"""
-cette fonction est Trouver le nom du service qui correspond à un numéro de port STOCKER Dans un fichier par defaut dans windows C:\Windows\System32\drivers\etc\services
-"""
-
+#recuperer le nom du service
 def get_service(port: int) -> str:
-    """
-    Si le service n'est pas trouvé, retourne 'INCONNU' avec socket.getservbyport()
-    socket.getservbyport() est une fonction Python qui consulte une base de données locale sur ta machine
-    """
     try:
         #on entre dans les argument le numero de port et le protocole (tcp)
+        #C:\Windows\System32\drivers\etc\services
         service = socket.getservbyport(port, "tcp")
         return service.upper()
-        #upper pour que tous les retours soit majuscule
     except OSError:
-        # Si le port n'est pas dans la base de données locale des services, on retourne 'INCONNU'
         return "INCONNU"
 
 def scan_tcp(ip: str, port: int) -> dict:
     """
-    Teste si un port TCP est ouvert sur une IP donnée.
-    Retourne un dictionnaire avec le statut du port et le nom du service.
+    Teste si un port TCP est ouvert sur une IP donnee
     """
-    try:
-        # Création d'un socket IPv4 (AF_INET) de type TCP (SOCK_STREAM)
-        # AF_INET → tu utilises IPv4
-        # SOCK_STREAM → tu utilises TCP
+    try: 
+        # Création d'un socket IPv4 (AF_INET=IPV4) de type TCP (SOCK_STREAM=TCP)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1.0)
+            s.settimeout(1.0) 
             # connect_ex renvoie 0 si la connexion réussit (port ouvert), sinon un code d'erreur
-            # on n'utilise pas connect() car il lève une exception si le port est fermé
+            # on n'utilise pas connect() car il lève une exception si le port est fermé et cela veut dir que si un port est fermer le prog va s'arreter
             result = s.connect_ex((ip, port))
             
             statut = "ouvert" if result == 0 else "fermé"
@@ -45,7 +34,6 @@ def scan_tcp(ip: str, port: int) -> dict:
                 "service": service
             }
     except Exception as e:
-        # Gestion des erreurs réseaux ou système inattendues (ex: permission refusée)
         return {
             "port": port,
             "statut": "erreur",
@@ -55,28 +43,23 @@ def scan_tcp(ip: str, port: int) -> dict:
 
 def scan_ports(ip: str, ports: list, progress_callback=None) -> list:
     """
-    Scanne une liste de ports en multi-threading avec ThreadPoolExecutor.
-    Retourne une liste de dictionnaires avec le résultat de chaque port.
+    Scanne une liste de ports en multi-threading avec ThreadPoolExecutor
+    Retourne une liste de dictionnaires avec le résultat de chaque port
     
-    Args:
-        ip (str): L'adresse IP de la cible.
-        ports (list): Une liste d'entiers représentant les ports à scanner.
-        progress_callback (callable, optionnel): Fonction appelée après chaque port scanné.
+    callback est une fonction qui sera appelée après chaque port scanné c'est pour la barre de progression c'est juste pour le style pas un truc obligatoire
     """
     resultats = []
     
-    # ThreadPoolExecutor permet de lancer des threads concurrents pour le scan réseau
-    # au lieu d'un seul ouvrier qui teste les ports un par un,
-    # tu as 50 ouvriers qui travaillent en même temps
+     
     with concurrent.futures.ThreadPoolExecutor(max_workers=200) as executor:
         
-        # Dictionnaire liant chaque future (tâche asynchrone) au port scanné
+        #appeler la fonction scan_tcp pour chaque port et chaque fonction est appeler par un thread different 
         futures = {executor.submit(scan_tcp, ip, port): port for port in ports}
         
-        # as_completed récupère le résultat d'un thread dès qu'il est fini,
-        # peu importe l'ordre de lancement → barre de progression fluide en temps réel
+        # as_completed récupère le résultat d'un thread dès qu'il est fini peut importe l'ordre 
         for future in concurrent.futures.as_completed(futures):
             try:
+
                 res = future.result()
                 resultats.append(res)
             except Exception as e:
@@ -92,6 +75,5 @@ def scan_ports(ip: str, ports: list, progress_callback=None) -> list:
             if progress_callback:
                 progress_callback()
     
-    # Trier les résultats par numéro de port
     resultats.sort(key=lambda x: x["port"])
     return resultats

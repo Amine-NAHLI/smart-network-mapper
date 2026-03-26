@@ -46,7 +46,35 @@ Une fois l'hôte ciblé, le programme propose 3 modes (Rapide, Complet ou Person
 - **Console** : Les résultats sont affichés dynamiquement avec `tqdm` (barre de progression) et `colorama` (couleurs pour les statuts).
 - **JSON** : Une sauvegarde structurée est effectuée dans `outputs/scan_result.json`, facilitant l'intégration avec d'autres outils ou une analyse ultérieure.
 
+## ⚙️ Détails Techniques Avancés
+
+### 🧩 Système d'Importation Robuste (Fallback)
+Dans le dossier `scanner/`, vous remarquerez une structure d'importation particulière :
+```python
+try:
+    from .utils import parse_subnet
+except ImportError:
+    try:
+        from scanner.utils import parse_subnet
+    except ImportError:
+        from utils import parse_subnet
+```
+**Pourquoi ce choix ?** Cela garantit que le script fonctionne dans trois scénarios différents :
+1. **Exécution en tant que package** (`python -m scanner.host_discovery`).
+2. **Importation depuis la racine** (`main.py` importe `scanner`).
+3. **Exécution directe** depuis l'intérieur du dossier `scanner/`.
+
+### 🧵 Architecture des Workers (Threading)
+Le scanner utilise la classe `ThreadPoolExecutor` de Python pour paralléliser les tâches.
+- **Scanning horizontal** : Pour la découverte d'hôtes, 254 IPs sont distribuées à 100 workers. Chaque worker attend une réponse ICMP de manière indépendante.
+- **Scanning vertical** : Pour le scan de ports, jusqu'à 200 workers testent simultanément différents ports sur une seule machine.
+- **Timeouts** : Des timeouts courts (0.5s à 1s) sont appliqués pour éviter qu'un hôte lent ou protégé par un pare-feu ne bloque l'ensemble de la file d'attente.
+
+### 🔍 Résolution de Services
+Le scanner ne se contente pas de dire qu'un port est ouvert. Il utilise la fonction `socket.getservbyport()` pour identifier le service probable (SSH, HTTP, HTTPS, etc.). Si le service est inconnu localement, il marque simplement "Service inconnu".
+
 ---
+
 
 ## 🚦 Installation et Lancement
 
@@ -75,8 +103,7 @@ python main.py
 Développé par **Amine NAHLI** dans le but de fournir un outil de diagnostic réseau simple, rapide et efficace.
 
 > [!IMPORTANT]
-> Cet outil est destiné à un usage légal et éthique uniquement. N'utilisez ce scanner que sur vos propres réseaux ou avec une autorisation explicite.
- lesquels vous avez une autorisation explicite.
+> Cet outil est destiné à un usage légal et éthique uniquement. N'utilisez ce scanner que sur vos propres réseaux ou sur ceux pour lesquels vous avez une autorisation explicite.
 
 ## 🤝 Contribuer
 
