@@ -335,7 +335,7 @@ def main():
         elif statut == "fermé":
             print(f"  {Fore.RED}[-]{Style.RESET_ALL}  Port {port}/TCP   {Fore.RED}FERMÉ{Style.RESET_ALL}     ({service})")
         else:
-            print(f"  {Fore.YELLOW}[!]{Style.RESET_ALL}  Port {port}/TCP   {Fore.YELLOW}{statut.upper()}{Style.RESET_ALL}    ({service})")
+            print(f"   {Fore.YELLOW}[!]{Style.RESET_ALL}  Port {port}/TCP   {Fore.YELLOW}{statut.upper()}{Style.RESET_ALL}    ({service})")
 
     save_json(target_ip, resultats)
     print(f"\n  {Fore.BLUE}[→] Récapitulatif — ports ouverts uniquement :{Style.RESET_ALL}\n")
