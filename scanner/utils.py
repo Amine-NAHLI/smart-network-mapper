@@ -31,3 +31,34 @@ def validate_cidr(subnet):
     except ValueError:
         return False
 
+
+def is_public_ip(ip: str) -> bool:
+    """
+    Vérifie si une adresse IP est publique.
+    Retourne False si l'IP est dans l'une des plages privées ou réservées spécifiées,
+    ou si l'IP est invalide.
+    """
+    try:
+        addr = ipaddress.ip_address(ip)
+        
+        # Plages exclues :
+        # 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8,
+        # 169.254.0.0/16, 0.0.0.0/8, 224.0.0.0/4, 240.0.0.0/4
+        excluded_ranges = [
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+            ipaddress.ip_network("127.0.0.0/8"),
+            ipaddress.ip_network("169.254.0.0/16"),
+            ipaddress.ip_network("0.0.0.0/8"),
+            ipaddress.ip_network("224.0.0.0/4"),
+            ipaddress.ip_network("240.0.0.0/4")
+        ]
+        
+        for network in excluded_ranges:
+            if addr in network:
+                return False
+        
+        return True
+    except ValueError:
+        return False
