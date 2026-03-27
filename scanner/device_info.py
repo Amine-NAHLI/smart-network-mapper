@@ -1,5 +1,12 @@
 import socket
 
+try:
+    from scapy.layers.l2 import ARP, Ether
+    from scapy.sendrecv import srp
+    SCAPY_AVAILABLE = True
+except ImportError:
+    SCAPY_AVAILABLE = False
+
 def get_hostname_dns(ip):
     """
     Récupère le nom d'hôte via DNS inversé.
@@ -16,9 +23,10 @@ def get_mac_arp(ip):
     """
     Récupère l'adresse MAC via ARP
     """
+    if not SCAPY_AVAILABLE:
+        return 'Unknown'
+
     try:
-        from scapy.layers.l2 import ARP, Ether
-        from scapy.sendrecv import srp
         #cree un paquet arp qui va etre envoyer a tous les adresse ip pour leur di voila cette ip si tu a cette adresse ip renvoie moi ton adresse mac
         arp_request = ARP(pdst=ip)
         broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
@@ -41,13 +49,17 @@ def get_mac_arp(ip):
     except Exception:
         return 'Unknown'
 
-def get_device_info(ip):
+def get_device_info(ip, is_public: bool = False):
     """
     Retourne hostname et MAC de l'appareil.
     """
     try:
         hostname = get_hostname_dns(ip)
-        mac = get_mac_arp(ip)
+        
+        if is_public:
+            mac = "N/A (Public IP)"
+        else:
+            mac = get_mac_arp(ip)
         return {
             'ip': ip,
             'hostname': hostname,
