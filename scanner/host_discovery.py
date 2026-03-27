@@ -1,6 +1,7 @@
 import concurrent.futures
 import ipaddress
-from icmplib import ping
+import socket
+import time
 
 try:
     from .utils import parse_subnet
@@ -13,65 +14,70 @@ except ImportError:
         from utils import parse_subnet
         from device_info import get_device_info
 
-def ping_host(ip, timeout=1):
+def tcp_ping(ip: str, ports=[80, 443, 22, 8080], timeout=1) -> dict:
     """
-    Envoie un ping à une seule adresse IP en utilisant icmplib.
+    Tente de se connecter via un socket TCP à chaque port de la liste un par un.
+    Si N'IMPORTE QUEL port accepte la connexion → l'hôte est actif.
+    Enregistre quel port a répondu et utilise cela comme approximation de la latence.
     """
-    try:
-        host = ping(str(ip), count=1, timeout=timeout)
-        device = get_device_info(str(ip))
-        
-        return {
-            "ip": str(ip),
-            "hostname": device.get("hostname", "Unknown"),
-            "mac": device.get("mac", "Unknown"),
-            "alive": host.is_alive,
-            "latency": host.avg_rtt if host.is_alive else None
-        }
-    except Exception:
-        # Capturer les erreurs : adresse invalide ou ping sans réponse
-        return {
-            "ip": str(ip),
-            "hostname": 'Unknown',
-            "mac": 'Unknown',
-            "alive": False,
-            "latency": None
-        }
+    alive = False
+    latency = None
+    open_port = None
+    hostname = "Unknown"
+    mac = "Unknown"
+
+    for port in ports:
+        start_time = time.time()
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(timeout)
+                # connect_ex retourne 0 en cas de succès
+                result = s.connect_ex((ip, port))
+                
+                if result == 0:
+                    end_time = time.time()
+                    latency = (end_time - start_time) * 1000  # Latence en ms
+                    alive = True
+                    open_port = port
+                    break
+        except Exception:
+            continue
+
+    if alive:
+        try:
+            device = get_device_info(ip)
+            hostname = device.get("hostname", "Unknown")
+            mac = device.get("mac", "Unknown")
+        except Exception:
+            pass
+
+    return {
+        "ip": ip,
+        "hostname": hostname,
+        "mac": mac,
+        "alive": alive,
+        "latency": round(latency, 2) if latency is not None else None,
+        "open_port": open_port
+    }
 
 def scan_subnet(subnet, timeout=1, max_workers=200):
     """
-    Pingue tous les hôtes d'un sous-réseau simultanément pour découvrir les hôtes actifs.
+    Scanne un sous-réseau en utilisant tcp_ping pour chaque hôte.
     """
-    #ips est une liste d'adresses ip
     ips = parse_subnet(subnet)
-    #parse_subnet → appelle parse_subnet de utils pour obtenir une liste d'adresses ip
-    
     alive_hosts = []
-    #alive_hosts → liste qui va contenir les adresses ip des hôtes actifs
 
-    # Je crée une équipe de 200 agents, chaque agent va pinger une IP
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-
-        # Je donne à chaque agent une tâche : ping_host(ip, timeout)
-        # futures est un dictionnaire qui associe chaque tâche à l'adresse IP correspondante
-        """
-        Ce qui se passe réellement :
-        executor.submit(ping_host, "192.168.1.1") → Thread 1 démarre
-        executor.submit(ping_host, "192.168.1.2") → Thread 2 démarre
-        executor.submit(ping_host, "192.168.1.3") → Thread 3 démarre
-        ... 100 threads en parallèle ...
-        """
-        futures = {executor.submit(ping_host, ip, timeout): ip for ip in ips}
+        # Remplacement de ping_host par tcp_ping avec keyword timeout
+        futures = {executor.submit(tcp_ping, ip, timeout=timeout): ip for ip in ips}
 
         for future in concurrent.futures.as_completed(futures):
-            #une fois que chaque agent a terminé son travail, je récupère son résultat
             result = future.result()
             if result.get("alive"):
-                # Afficher les détails de l'hôte actif au fur et à mesure de leur découverte
-                print(f"[+] Host {result['ip']:<15} is alive (Latency: {result['latency']} ms)")
+                print(f"[+] Host {result['ip']:<15} is alive (Latency: {result['latency']} ms, Port: {result['open_port']})")
                 alive_hosts.append(result)
 
-    #Trie par ordre numérique
+    # Tri par adresse IP
     alive_hosts.sort(key=lambda x: ipaddress.ip_address(x["ip"]))
 
     return alive_hosts
