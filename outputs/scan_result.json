@@ -1,5 +1,42 @@
 {
-    "cible": "192.168.1.9",
-    "date": "2026-03-26 23:43:53",
-    "ports": []
+    "cible": "192.168.1.10",
+    "date": "2026-03-27 15:56:17",
+    "ports": [
+        {
+            "port": 80,
+            "protocole": "TCP",
+            "statut": "ouvert",
+            "service": "HTTP"
+        },
+        {
+            "port": 135,
+            "protocole": "TCP",
+            "statut": "ouvert",
+            "service": "EPMAP"
+        },
+        {
+            "port": 139,
+            "protocole": "TCP",
+            "statut": "ouvert",
+            "service": "NETBIOS-SSN"
+        },
+        {
+            "port": 443,
+            "protocole": "TCP",
+            "statut": "ouvert",
+            "service": "HTTPS"
+        },
+        {
+            "port": 445,
+            "protocole": "TCP",
+            "statut": "ouvert",
+            "service": "MICROSOFT-DS"
+        },
+        {
+            "port": 3306,
+            "protocole": "TCP",
+            "statut": "ouvert",
+            "service": "INCONNU"
+        }
+    ]
 }

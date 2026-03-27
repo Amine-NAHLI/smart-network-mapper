@@ -13,8 +13,9 @@ except ImportError:
     Fore = Style = MockColor()
 
 from tqdm import tqdm
-from scanner.utils import validate_cidr
-from scanner.host_discovery import scan_subnet
+import ipaddress
+from scanner.utils import validate_cidr, is_public_ip
+from scanner.host_discovery import scan_subnet, tcp_ping
 from scanner.port_scanner import scan_ports
 
 # Ports les plus communs
@@ -199,7 +200,7 @@ def save_json(target_ip, resultats):
 
 
 def main():
-    # ── Bannière ───────────────────────────────────────────────
+    # STEP 1 - Banner
     print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
     print(f"║                                                          ║")
     print(f"║           SMART NETWORK MAPPER SCANNER                  ║")
@@ -207,7 +208,7 @@ def main():
     print(f"║                                                          ║")
     print(f"╚══════════════════════════════════════════════════════════╝{Style.RESET_ALL}")
 
-    # ── ÉTAPE 1 : Découverte des hôtes ────────────────────────
+    # STEP 2 - LAN Discovery
     print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
     print(f"│  ÉTAPE 1 — Découverte des hôtes sur le réseau           │")
     print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}")
@@ -220,7 +221,6 @@ def main():
             print(f"  {Fore.RED}[✘] Format CIDR invalide — veuillez entrer un sous-réseau valide.{Style.RESET_ALL}")
 
     print(f"\n  {Fore.BLUE}[→] Scan du sous-réseau {subnet} en cours...{Style.RESET_ALL}\n")
-
     try:
         hosts = scan_subnet(subnet, timeout=1, max_workers=100)
     except KeyboardInterrupt:
@@ -237,42 +237,71 @@ def main():
         print(f"\n  {Fore.YELLOW}[!] Aucun hôte actif trouvé — fin du programme.{Style.RESET_ALL}")
         sys.exit(0)
 
-    # ── ÉTAPE 2 : Scan des ports ───────────────────────────────
-    print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
-    print(f"│  ÉTAPE 2 — Scan des ports sur un hôte ciblé            │")
-    print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}")
-
-    scan_choice = input(f"\n  {Fore.WHITE}Voulez-vous scanner les ports d'un hôte ? (o/n) : {Style.RESET_ALL}").strip().lower()
-
-    if scan_choice != "o":
-        print(f"\n  {Fore.YELLOW}[!] Scan des ports ignoré — au revoir !{Style.RESET_ALL}\n")
-        sys.exit(0)
-
-    print(f"\n  {Fore.BLUE}[→] Hôtes actifs disponibles :{Style.RESET_ALL}")
-    for host in hosts:
-        print(f"        {Fore.CYAN}•{Style.RESET_ALL}  {host['ip']}")
+    # STEP 3 - Ask scan choice
+    print(f"\n{Fore.WHITE}Que voulez-vous faire ?{Style.RESET_ALL}")
+    print(f"  {Fore.CYAN}[ 1 ]  Scanner un hôte de ce réseau{Style.RESET_ALL}")
+    print(f"  {Fore.CYAN}[ 2 ]  Scanner une IP externe (publique){Style.RESET_ALL}")
+    print(f"  {Fore.CYAN}[ 3 ]  Quitter{Style.RESET_ALL}")
 
     while True:
-        target_ip = input(f"\n  {Fore.WHITE}IP cible à scanner : {Style.RESET_ALL}").strip()
-        if any(h["ip"] == target_ip for h in hosts):
+        choice = input(f"\n  {Fore.WHITE}Votre choix (1/2/3) : {Style.RESET_ALL}").strip()
+        if choice in ["1", "2", "3"]:
             break
         else:
-            print(f"  {Fore.RED}[✘] IP non trouvée — choisissez une IP dans la liste ci-dessus.{Style.RESET_ALL}")
+            print(f"  {Fore.RED}[✘] Choix invalide — entrez 1, 2 ou 3.{Style.RESET_ALL}")
 
-    # ── ÉTAPE 3 : Choix du mode de scan ───────────────────────
-    print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
-    print(f"│  ÉTAPE 3 — Choix du mode de scan                       │")
-    print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}")
+    if choice == "3":
+        print(f"\n  {Fore.YELLOW}[!] Au revoir !{Style.RESET_ALL}\n")
+        sys.exit(0)
 
+    target_ip = None
+
+    if choice == "1":
+        # Handling Choice 1 (LAN Hôte)
+        print(f"\n  {Fore.BLUE}[→] Hôtes actifs disponibles :{Style.RESET_ALL}")
+        for host in hosts:
+            print(f"        {Fore.CYAN}•{Style.RESET_ALL}  {host['ip']}")
+
+        while True:
+            target_ip = input(f"\n  {Fore.WHITE}IP cible à scanner : {Style.RESET_ALL}").strip()
+            if any(h["ip"] == target_ip for h in hosts):
+                break
+            else:
+                print(f"  {Fore.RED}[✘] IP non trouvée — choisissez une IP dans la liste ci-dessus.{Style.RESET_ALL}")
+
+    elif choice == "2":
+        # Handling Choice 2 (Public IP)
+        while True:
+            target_ip_input = input(f"\n  {Fore.WHITE}Adresse IP publique cible : {Style.RESET_ALL}").strip()
+            try:
+                ip_obj = ipaddress.ip_address(target_ip_input)
+                target_ip = str(ip_obj)
+                if not is_public_ip(target_ip):
+                    print(f"  {Fore.RED}[✘] Cette IP est privée — entrez une IP publique.{Style.RESET_ALL}")
+                    continue
+                break
+            except ValueError:
+                print(f"  {Fore.RED}[✘] Adresse IP invalide — veuillez réessayer.{Style.RESET_ALL}")
+
+        print(f"  {Fore.BLUE}[→] Vérification de l'état de l'hôte...{Style.RESET_ALL}")
+        res_ping = tcp_ping(target_ip)
+        if not res_ping["alive"]:
+            print(f"  {Fore.RED}[✘] Hôte injoignable via TCP — arrêt.{Style.RESET_ALL}")
+            sys.exit(0)
+        else:
+            print(f"  {Fore.GREEN}[✔] Hôte actif — port {res_ping['open_port']} répond (latence: {res_ping['latency']:.2f} ms){Style.RESET_ALL}")
+
+    # STEP 5 - Ask port scan
+    scan_choice = input(f"\n  {Fore.WHITE}Voulez-vous scanner les ports de cette IP ? (o/n) : {Style.RESET_ALL}").strip().lower()
+    if scan_choice != 'o':
+        print(f"\n  {Fore.YELLOW}[!] Fin du programme — au revoir !{Style.RESET_ALL}\n")
+        sys.exit(0)
+
+    # STEP 6 - Call choisir_mode_scan()
     ports_a_scanner = choisir_mode_scan()
 
-    # ── ÉTAPE 4 : Analyse des ports ───────────────────────────
-    print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
-    print(f"│  ÉTAPE 4 — Analyse des ports                            │")
-    print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}")
-
+    # STEP 7 - Run scan_ports() with tqdm
     print(f"\n  {Fore.YELLOW}[→] Lancement du scan — {len(ports_a_scanner)} port(s) sur {target_ip}{Style.RESET_ALL}\n")
-
     pbar = tqdm(
         total=len(ports_a_scanner),
         desc="  Progression",
@@ -289,12 +318,11 @@ def main():
         pbar.close()
         print(f"\n  {Fore.YELLOW}[!] Scan interrompu par l'utilisateur.{Style.RESET_ALL}")
         sys.exit(0)
-
     pbar.close()
 
-    # ── ÉTAPE 5 : Résultats ────────────────────────────────────
+    # STEP 8 - Display results, call save_json(), display_ports_table()
     print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
-    print(f"│  ÉTAPE 5 — Résultats du scan                           │")
+    print(f"│  RÉSULTATS DU SCAN                                       │")
     print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}\n")
 
     for res in resultats:
@@ -310,7 +338,6 @@ def main():
             print(f"  {Fore.YELLOW}[!]{Style.RESET_ALL}  Port {port}/TCP   {Fore.YELLOW}{statut.upper()}{Style.RESET_ALL}    ({service})")
 
     save_json(target_ip, resultats)
-
     print(f"\n  {Fore.BLUE}[→] Récapitulatif — ports ouverts uniquement :{Style.RESET_ALL}\n")
     display_ports_table(resultats)
 

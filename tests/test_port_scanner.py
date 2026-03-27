@@ -6,12 +6,10 @@ class TestGetService(unittest.TestCase):
     """Tests pour la fonction get_service"""
 
     def test_port_connu(self):
-        # Le port 80 doit retourner HTTP
         result = get_service(80)
         self.assertEqual(result, "HTTP")
 
     def test_port_inconnu(self):
-        # Un port non référencé doit retourner INCONNU
         result = get_service(19999)
         self.assertEqual(result, "INCONNU")
 
@@ -91,4 +89,4 @@ class TestScanPorts(unittest.TestCase):
         self.assertEqual(compteur["valeur"], 3)
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main() 
