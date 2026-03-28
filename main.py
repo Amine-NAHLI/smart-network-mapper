@@ -66,32 +66,38 @@ def display_hosts_table(hosts):
 
 def display_ports_table(resultats):
     """
-    Affiche uniquement les ports ouverts dans un tableau final.
+    Affiche les résultats du scan dans un tableau style Nmap.
     """
-    ports_ouverts = [r for r in resultats if r["statut"] == "ouvert"]
+    column_port = "PORT"
+    column_status = "ÉTAT"
+    column_service = "SERVICE"
+    column_version = "VERSION"
 
-    column_port, column_protocol, column_service, column_status = "Port", "Protocole", "Service", "Statut"
+    print(f"\n{Fore.WHITE}{column_port:<10} {column_status:<15} {column_service:<20} {column_version}{Style.RESET_ALL}")
+    print("-" * 80)
 
-    border = "+" + "-"*10 + "+" + "-"*12 + "+" + "-"*15 + "+" + "-"*12 + "+"
-    print(border)
-    print(f"| {column_port[:8].ljust(8)} | {column_protocol[:10].ljust(10)} | {column_service[:13].ljust(13)} | {column_status[:10].ljust(10)} |")
-    print(border)
+    for res in resultats:
+        port_protocol = f"{res['port']}/tcp"
+        status = res["statut"].upper()
+        service = res["service"].lower()
+        
+        # Détermination de la couleur en fonction du statut
+        if res["statut"] == "ouvert":
+            status_color = Fore.GREEN
+            version = res.get("version", "Inconnue")
+            if version == "Non détectée" or version == "N/A":
+                version = res.get("banner", "Inconnue")[:40]
+        elif res["statut"] == "fermé":
+            status_color = Fore.RED
+            version = ""
+        else:
+            status_color = Fore.YELLOW
+            # Pour les erreurs, on affiche le message d'erreur (stocké dans banner)
+            version = res.get("banner", "")
 
-    if not ports_ouverts:
-        message = "Aucun port ouvert trouvé".ljust(53)
-        print(f"| {Fore.YELLOW}{message}{Style.RESET_ALL} |")
-        print(border)
-        return
+        print(f"{port_protocol:<10} {status_color}{status:<15}{Style.RESET_ALL} {service:<20} {version}")
 
-    for res in ports_ouverts:
-        port_padded = str(res["port"])[:8].ljust(8)
-        protocol_padded = "TCP"[:10].ljust(10)
-        service_padded = res["service"][:13].ljust(13)
-        status_padded = "Ouvert"[:10].ljust(10)
-
-        print(f"| {port_padded} | {protocol_padded} | {service_padded} | {Fore.GREEN}{status_padded}{Style.RESET_ALL} |")
-
-    print(border)
+    print("-" * 80)
 
 
 def choisir_mode_scan():
@@ -170,7 +176,7 @@ def choisir_mode_scan():
 def save_json(target_ip, resultats):
     """
     Sauvegarde les résultats du scan dans outputs/scan_result.json.
-    Le fichier est écrasé à chaque nouveau scan.
+    Garantit une seule sauvegarde par scan.
     """
     os.makedirs("outputs", exist_ok=True)
 
@@ -188,7 +194,9 @@ def save_json(target_ip, resultats):
                 "port": res["port"],
                 "protocole": "TCP",
                 "statut": "ouvert",
-                "service": res["service"]
+                "service": res["service"],
+                "version": res.get("version", "N/A"),
+                "banner": res.get("banner", "N/A")
             })
 
     output_path = os.path.join("outputs", "scan_result.json")
@@ -257,7 +265,6 @@ def main():
     target_ip = None
 
     if choice == "1":
-        # Handling Choice 1 (LAN Hôte)
         print(f"\n  {Fore.BLUE}[→] Hôtes actifs disponibles :{Style.RESET_ALL}")
         for host in hosts:
             print(f"        {Fore.CYAN}•{Style.RESET_ALL}  {host['ip']}")
@@ -270,7 +277,6 @@ def main():
                 print(f"  {Fore.RED}[✘] IP non trouvée — choisissez une IP dans la liste ci-dessus.{Style.RESET_ALL}")
 
     elif choice == "2":
-        # Handling Choice 2 (Public IP)
         while True:
             target_ip_input = input(f"\n  {Fore.WHITE}Adresse IP publique cible : {Style.RESET_ALL}").strip()
             try:
@@ -297,11 +303,15 @@ def main():
         print(f"\n  {Fore.YELLOW}[!] Fin du programme — au revoir !{Style.RESET_ALL}\n")
         sys.exit(0)
 
-    # STEP 6 - Call choisir_mode_scan()
-    ports_a_scanner = choisir_mode_scan()
+    # STEP 6 - Select and deduplicate ports
+    # BUG : Si l'utilisateur saisit deux fois le même port (ex: 80, 80), 
+    # scan_ports créait deux threads et retournait deux résultats, provoquant des doublons.
+    # SOLUTION : Utilisation de set() pour garantir l'unicité des ports avant le scan.
+    raw_ports = choisir_mode_scan()
+    ports_a_scanner = sorted(list(set(raw_ports)))
 
     # STEP 7 - Run scan_ports() with tqdm
-    print(f"\n  {Fore.YELLOW}[→] Lancement du scan — {len(ports_a_scanner)} port(s) sur {target_ip}{Style.RESET_ALL}\n")
+    print(f"\n  {Fore.YELLOW}[→] Lancement du scan — {len(ports_a_scanner)} port(s) unique(s) sur {target_ip}{Style.RESET_ALL}\n")
     pbar = tqdm(
         total=len(ports_a_scanner),
         desc="  Progression",
@@ -313,31 +323,45 @@ def main():
         pbar.update(1)
 
     try:
-        resultats = scan_ports(target_ip, ports_a_scanner, progress_callback=pbar_update)
+        resultats_bruts = scan_ports(target_ip, ports_a_scanner, progress_callback=pbar_update)
     except KeyboardInterrupt:
         pbar.close()
         print(f"\n  {Fore.YELLOW}[!] Scan interrompu par l'utilisateur.{Style.RESET_ALL}")
         sys.exit(0)
     pbar.close()
 
+    # BUG : Même si scan_ports est propre, il est possible que des doublons surviennent par erreur.
+    # SOLUTION : On utilise un dictionnaire {port: résultat} pour garantir qu'un même port
+    # ne soit pas affiché ou sauvegardé deux fois.
+    unique_results_dict = {res["port"]: res for res in resultats_bruts}
+    resultats = sorted(unique_results_dict.values(), key=lambda x: x["port"])
+
     # STEP 8 - Display results, call save_json(), display_ports_table()
+    # BUG : L'affichage et la sauvegarde étaient susceptibles d'être dupliqués si le code précédent passait des listes corrompues.
+    # SOLUTION : Ces appels sont strictement isolés à la fin du flux principal, utilisant les données dédoublonnées.
     print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
     print(f"│  RÉSULTATS DU SCAN                                       │")
     print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}\n")
 
+    # L'affichage détaillé par port a déjà été simplifié ou peut être omis si on utilise le tableau Nmap.
+    # On va garder un affichage rapide ici puis le tableau final.
     for res in resultats:
         port = res["port"]
         statut = res["statut"]
         service = res["service"]
+        banner = res.get("banner", "")
 
         if statut == "ouvert":
-            print(f"  {Fore.GREEN}[+]{Style.RESET_ALL}  Port {port}/TCP   {Fore.GREEN}OUVERT{Style.RESET_ALL}    ({service})")
+            print(f"  {Fore.GREEN}[+]{Style.RESET_ALL} Port {port}/TCP : {Fore.GREEN}OUVERT{Style.RESET_ALL} ({service}) -> {res.get('version', 'Inconnue')}")
         elif statut == "fermé":
-            print(f"  {Fore.RED}[-]{Style.RESET_ALL}  Port {port}/TCP   {Fore.RED}FERMÉ{Style.RESET_ALL}     ({service})")
+            print(f"  {Fore.RED}[-]{Style.RESET_ALL} Port {port}/TCP : {Fore.RED}FERMÉ{Style.RESET_ALL}  ({service}) -> {banner}")
         else:
-            print(f"   {Fore.YELLOW}[!]{Style.RESET_ALL}  Port {port}/TCP   {Fore.YELLOW}{statut.upper()}{Style.RESET_ALL}    ({service})")
+            print(f"  {Fore.YELLOW}[!]{Style.RESET_ALL} Port {port}/TCP : {Fore.YELLOW}{statut.upper()}{Style.RESET_ALL} ({service}) -> {banner}")
 
+    # La sauvegarde JSON n'est appelée qu'une fois avec l'ensemble des résultats uniques.
     save_json(target_ip, resultats)
+    
+    # Le tableau récapitulatif final utilise également la liste unique.
     print(f"\n  {Fore.BLUE}[→] Récapitulatif — ports ouverts uniquement :{Style.RESET_ALL}\n")
     display_ports_table(resultats)
 
