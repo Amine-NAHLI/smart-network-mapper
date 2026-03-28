@@ -81,7 +81,6 @@ def display_ports_table(resultats):
         status = res["statut"].upper()
         service = res["service"].lower()
         
-        # Détermination de la couleur en fonction du statut
         if res["statut"] == "ouvert":
             status_color = Fore.GREEN
             version = res.get("version", "Inconnue")
