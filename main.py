@@ -12,6 +12,12 @@ except ImportError:
             return ""
     Fore = Style = MockColor()
 
+import socket
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 from tqdm import tqdm
 import ipaddress
 from scanner.utils import validate_cidr, is_public_ip
@@ -97,6 +103,77 @@ def display_ports_table(resultats):
         print(f"{port_protocol:<10} {status_color}{status:<15}{Style.RESET_ALL} {service:<20} {version}")
 
     print("-" * 80)
+
+
+def detect_lan_config():
+    """
+    Détecte automatiquement les interfaces réseau actives et priorise le Wi-Fi.
+    Filtre les interfaces actives (isup=True) et les adresses IPv4 valides.
+    """
+    if psutil is None:
+        return None
+
+    try:
+        interfaces = psutil.net_if_addrs()
+        stats = psutil.net_if_stats()
+        all_configs = []
+
+        for iface_name, addrs in interfaces.items():
+            # 1. Vérifier si l'interface est active (isup)
+            if iface_name in stats and not stats[iface_name].isup:
+                continue
+                
+            for addr in addrs:
+                # 2. Ne sélectionner que les adresses IPv4
+                if addr.family == socket.AF_INET:
+                    ip = addr.address
+                    netmask = addr.netmask
+                    
+                    # Ignorer les interfaces de boucle locale (loopback) et les IPs invalides
+                    if ip.startswith("127.") or not netmask:
+                        continue
+                    
+                    try:
+                        # 3. Calculer le réseau CIDR réel avec ipaddress
+                        network = ipaddress.IPv4Network(f"{ip}/{netmask}", strict=False)
+                        all_configs.append({
+                            "interface": iface_name,
+                            "ip": ip,
+                            "netmask": netmask,
+                            "cidr": str(network)
+                        })
+                    except Exception:
+                        continue
+
+        if not all_configs:
+            return None
+
+        # 4. Priorisation : Wi-Fi > Ethernet > Autres
+        # Recherche d'interfaces Wi-Fi (noms contenant : "Wi-Fi", "WiFi", "wlan")
+        wifi_interfaces = [c for c in all_configs if any(t in c["interface"].lower() for t in ["wi-fi", "wifi", "wlan"])]
+        # Recherche d'interfaces Ethernet (eth, en0, en1, etc.)
+        eth_interfaces = [c for c in all_configs if any(t in c["interface"].lower() for t in ["eth", "en0", "en1", "ethernet", "local area"])]
+        # Autres interfaces actives
+        others = [c for c in all_configs if c not in wifi_interfaces and c not in eth_interfaces]
+
+        if wifi_interfaces:
+            # On prend la première carte Wi-Fi trouvée
+            return wifi_interfaces[0]
+        
+        if eth_interfaces:
+            # Message spécifique si on bascule sur Ethernet
+            print(f"\n  {Fore.YELLOW}[!] Wi-Fi non détecté, utilisation de l’Ethernet...{Style.RESET_ALL}")
+            return eth_interfaces[0]
+            
+        if others:
+            print(f"\n  {Fore.YELLOW}[!] Wi-Fi et Ethernet non détectés, utilisation d'une interface alternative...{Style.RESET_ALL}")
+            return others[0]
+
+        return None
+        
+    except Exception:
+        # Robustesse : retourne None au lieu de planter
+        return None
 
 
 def choisir_mode_scan():
@@ -220,12 +297,49 @@ def main():
     print(f"│  ÉTAPE 1 — Découverte des hôtes sur le réseau           │")
     print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}")
 
+    # --- NOUVEAU MENU DE DÉTECTION RÉSEAU ---
     while True:
-        subnet = input(f"\n  {Fore.WHITE}Sous-réseau cible (ex: 192.168.1.0/24) : {Style.RESET_ALL}").strip()
-        if validate_cidr(subnet):
+        print(f"\n  {Fore.WHITE}Que voulez-vous scanner ?{Style.RESET_ALL}")
+        print(f"    {Fore.GREEN}[ 1 ]{Style.RESET_ALL}  Détecter et scanner mon réseau local automatiquement")
+        print(f"    {Fore.YELLOW}[ 2 ]{Style.RESET_ALL}  Scanner un réseau spécifique (saisie manuelle CIDR)")
+        
+        init_choice = input(f"\n  {Fore.WHITE}Votre choix (1/2) : {Style.RESET_ALL}").strip()
+        
+        subnet = None
+
+        if init_choice == "1":
+            print(f"\n  {Fore.BLUE}[→] Recherche de la carte Wi-Fi active...{Style.RESET_ALL}")
+            config = detect_lan_config()
+            
+            if not config:
+                print(f"  {Fore.RED}[✘] Échec de la détection automatique (aucune interface Wi-Fi ou Ethernet active trouvée).{Style.RESET_ALL}")
+                print(f"  {Fore.YELLOW}[!] Veuillez entrer le réseau manuellement.{Style.RESET_ALL}")
+                # Fallback sur la saisie manuelle
+                while True:
+                    subnet = input(f"\n  {Fore.WHITE}Sous-réseau cible (ex: 192.168.1.0/24) : {Style.RESET_ALL}").strip()
+                    if validate_cidr(subnet):
+                        break
+                    print(f"  {Fore.RED}[✘] Format CIDR invalide.{Style.RESET_ALL}")
+            else:
+                # Affichage clair du résultat de détection
+                print(f"  {Fore.GREEN}[✔] Réseau local détecté avec succès !{Style.RESET_ALL}")
+                print(f"      {Fore.CYAN}•{Style.RESET_ALL} Interface utilisée : {Fore.WHITE}{config['interface']}{Style.RESET_ALL}")
+                print(f"      {Fore.CYAN}•{Style.RESET_ALL} IP locale         : {Fore.WHITE}{config['ip']}{Style.RESET_ALL}")
+                print(f"      {Fore.CYAN}•{Style.RESET_ALL} Masque réseau      : {Fore.WHITE}{config['netmask']}{Style.RESET_ALL}")
+                print(f"      {Fore.CYAN}•{Style.RESET_ALL} Réseau détecté     : {Fore.YELLOW}{config['cidr']}{Style.RESET_ALL}")
+                subnet = config['cidr']
+            break
+
+        elif init_choice == "2":
+            while True:
+                subnet = input(f"\n  {Fore.WHITE}Sous-réseau cible (ex: 192.168.1.0/24) : {Style.RESET_ALL}").strip()
+                if validate_cidr(subnet):
+                    break
+                else:
+                    print(f"  {Fore.RED}[✘] Format CIDR invalide — veuillez entrer un sous-réseau valide.{Style.RESET_ALL}")
             break
         else:
-            print(f"  {Fore.RED}[✘] Format CIDR invalide — veuillez entrer un sous-réseau valide.{Style.RESET_ALL}")
+            print(f"  {Fore.RED}[✘] Choix invalide.{Style.RESET_ALL}")
 
     print(f"\n  {Fore.BLUE}[→] Scan du sous-réseau {subnet} en cours...{Style.RESET_ALL}\n")
     try:
