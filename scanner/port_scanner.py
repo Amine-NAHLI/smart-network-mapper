@@ -1,79 +1,123 @@
 import socket
 import concurrent.futures
+import re
 
-#recuperer le nom du service
+# Récupérer le nom du service
 def get_service(port: int) -> str:
     try:
-        #on entre dans les argument le numero de port et le protocole (tcp)
-        #C:\Windows\System32\drivers\etc\services
+        # On essaie d'obtenir le nom du service associé au port
         service = socket.getservbyport(port, "tcp")
         return service.upper()
     except OSError:
         return "INCONNU"
 
+def grab_banner(ip: str, port: int, timeout=2) -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            s.connect((ip, port))
+            
+            # Probes spécifiques pour certains ports
+            if port in [80, 8080, 8443, 443]:
+                s.sendall(b"HEAD / HTTP/1.0\r\n\r\n")
+            
+            banner = s.recv(1024).decode('utf-8', errors='ignore').strip()
+            return banner if banner else "Réponse vide"
+    except socket.timeout:
+        return "ERREUR: Timeout"
+    except ConnectionRefusedError:
+        return "FERMÉ / pas de réponse"
+    except Exception as e:
+        return f"ERREUR: {type(e).__name__}"
+
+def extract_version(banner: str) -> str:
+    # Si le banner indique une erreur ou un port fermé
+    if "ERREUR" in banner or "FERMÉ" in banner or "Réponse vide" in banner:
+        return "Non détectée"
+        
+    try:
+        # Pattern simple pour extraire les versions (e.g., Apache/2.4.1)
+        pattern = r'([\w\-]+)[/ ]([\d]+\.[\d]+[\.\d]*)'
+        match = re.search(pattern, banner)
+        if match:
+            return f"{match.group(1)}/{match.group(2)}"
+        return "Version inconnue"
+    except Exception:
+        return "Erreur d'analyse"
+
 def scan_tcp(ip: str, port: int) -> dict:
     """
-    Teste si un port TCP est ouvert sur une IP donnee
+    Teste si un port TCP est ouvert sur une IP donnée avec une gestion d'erreurs améliorée.
     """
     try: 
-        # Création d'un socket IPv4 (AF_INET=IPV4) de type TCP (SOCK_STREAM=TCP)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1.0) 
-            # connect_ex renvoie 0 si la connexion réussit (port ouvert), sinon un code d'erreur
-            # on n'utilise pas connect() car il lève une exception si le port est fermé et cela veut dir que si un port est fermer le prog va s'arreter
-            result = s.connect_ex((ip, port))
+            s.settimeout(1.5) 
+            # connect() lève une exception en cas d'échec, ce qui permet de capturer le type d'erreur
+            s.connect((ip, port))
             
-            statut = "ouvert" if result == 0 else "fermé"
-            
-            # Récupération du nom du service uniquement si le port est ouvert
-            service = get_service(port) if statut == "ouvert" else "INCONNU"
+            statut = "ouvert"
+            service = get_service(port)
+            banner = grab_banner(ip, port)
+            version = extract_version(banner)
             
             return {
                 "port": port,
                 "statut": statut,
-                "service": service
+                "service": service,
+                "banner": banner,
+                "version": version
             }
+    except ConnectionRefusedError:
+        return {
+            "port": port,
+            "statut": "fermé",
+            "service": get_service(port),
+            "banner": "FERMÉ / pas de réponse",
+            "version": "N/A"
+        }
+    except socket.timeout:
+        return {
+            "port": port,
+            "statut": "filtré/timeout",
+            "service": get_service(port),
+            "banner": "ERREUR: Timeout",
+            "version": "N/A"
+        }
     except Exception as e:
         return {
             "port": port,
             "statut": "erreur",
-            "service": "INCONNU",
-            "erreur": str(e)
+            "service": get_service(port),
+            "banner": f"ERREUR: {type(e).__name__}",
+            "version": "N/A"
         }
 
 def scan_ports(ip: str, ports: list, progress_callback=None) -> list:
     """
-    Scanne une liste de ports en multi-threading avec ThreadPoolExecutor
-    Retourne une liste de dictionnaires avec le résultat de chaque port
-    
-    callback est une fonction qui sera appelée après chaque port scanné c'est pour la barre de progression c'est juste pour le style pas un truc obligatoire
+    Scanne une liste de ports en multi-threading avec ThreadPoolExecutor.
     """
     resultats = []
     
-     
     with concurrent.futures.ThreadPoolExecutor(max_workers=200) as executor:
-        
-        #appeler la fonction scan_tcp pour chaque port et chaque fonction est appeler par un thread different 
         futures = {executor.submit(scan_tcp, ip, port): port for port in ports}
         
-        # as_completed récupère le résultat d'un thread dès qu'il est fini peut importe l'ordre 
         for future in concurrent.futures.as_completed(futures):
             try:
-
                 res = future.result()
                 resultats.append(res)
             except Exception as e:
-                # Si le thread a planté, on remonte l'erreur sans bloquer les autres
                 port = futures[future]
                 resultats.append({
                     "port": port,
                     "statut": "erreur",
-                    "service": "INCONNU",
-                    "erreur": str(e)
+                    "service": get_service(port),
+                    "banner": f"ERREUR: {type(e).__name__}",
+                    "version": "N/A"
                 })
             
             if progress_callback:
                 progress_callback()
     
+    # Tri par numéro de port pour une lecture plus claire (style Nmap)
     resultats.sort(key=lambda x: x["port"])
-    return resultats
+    return resultats
