@@ -1,177 +1,165 @@
-# 🛡️ Smart Network Mapper (Scanner Pro)
+# 🛰️ Smart Network Mapper
 
-Bienvenue dans le **Smart Network Mapper**, un outil de cartographie réseau professionnel, intelligent et ultra-rapide conçu en Python. Que vous soyez un passionné de cybersécurité, un administrateur système ou un débutant curieux, cet outil vous permet d'explorer votre environnement réseau en toute simplicité.
+Bienvenue dans le projet **Smart Network Mapper** ! Cet outil est un scanner réseau complet conçu pour être à la fois **puissant** pour les initiés et **pédagogique** pour les débutants.
 
----
-
-## 🌍 1. Analyse Globale du Projet
-
-### Le Problème 🚩
-Dans un réseau, il est souvent difficile de savoir exactement **quelles machines sont allumées** et **quels services (ports) sont exposés**. Une faille de sécurité commence souvent par un port ouvert oublié ou une machine mal configurée.
-
-### La Solution ✅
-Le **Smart Network Mapper** automatise la découverte :
-1. Il scanne votre réseau local pour trouver toutes les machines actives.
-2. Il vous permet de cibler une machine spécifique (locale ou publique).
-3. Il analyse les ports de cette machine pour identifier les services vulnérables ou actifs.
-
-### Cas d'Utilisation Réels 💼
-- **Cybersécurité** : Identifier des ports "sensibles" (comme une base de données MySQL) exposés par erreur.
-- **Audit Réseau** : Vérifier que toutes les machines connectées à votre Wi-Fi sont bien les vôtres.
-- **Dépannage** : Vérifier si un serveur Web ou un accès SSH est bien joignable.
+Il permet d'explorer votre réseau local (LAN) ou des serveurs distants pour découvrir quels appareils sont actifs et quels services ils hébergent.
 
 ---
 
-## 🏗️ 2. Architecture du Projet
+## 📌 Présentation du projet
 
-Le projet est structuré de manière modulaire : chaque fichier a un rôle précis pour garantir la clarté et la maintenance.
+- **Nom du projet** : Smart Network Mapper
+- **Objectif principal** : Cartographier un réseau informatique en identifiant les machines connectées et leurs "portes d'entrée" (les ports).
+- **Problème résolu** : Savoir exactement ce qui tourne sur son réseau, détecter des appareils inconnus ou vérifier la sécurité de ses propres services.
+- **À qui il est destiné** : Étudiants en informatique, curieux de la cybersécurité, ou administrateurs réseau cherchant un outil simple et transparent.
 
-```text
-smart-network-mapper/
-├── main.py                 # 🚀 Point d'entrée (Interface Utilisateur)
-├── scanner/                # 🧠 Cœur de la logique (Modules)
-│   ├── host_discovery.py   # 🔎 Découverte des hôtes (TCP Ping)
-│   ├── device_info.py      # ℹ️ Infos (MAC ARP, Hostname DNS)
-│   ├── port_scanner.py     # ⚡ Scanner de ports multi-threadé
-│   └── utils.py            # 🛠️ Utilitaires (Validation IP)
-├── outputs/                # 📂 Résultats des scans (JSON)
-└── tests/                  # 🧪 Tests de fiabilité
+---
+
+## ⚙️ Fonctionnalités
+
+✅ **Détection automatique du réseau** : Identifie votre carte Wi-Fi ou Ethernet et calcule votre plage d'adresses IP.  
+✅ **Scan d'hôtes (Host Discovery)** : Trouve toutes les machines allumées sur votre réseau local.  
+✅ **Scan de ports multi-threadé** : Analyse des milliers de ports en quelques secondes grâce à l'exécution en parallèle.  
+✅ **Identification de services** : Reconnaît automatiquement les services courants (HTTP, SSH, FTP, etc.).  
+✅ **Banner Grabbing & Versioning** : Tente de lire la "signature" du service pour deviner sa version exacte.  
+✅ **Support IP Publique** : Permet aussi de scanner des serveurs sur Internet (avec validation de sécurité).  
+✅ **Export JSON** : Sauvegarde automatiquement les résultats pour une analyse ultérieure.
+
+---
+
+## 🧠 Comment ça marche ?
+
+Le programme suit un flux logique rigoureux pour garantir rapidité et précision.
+
+### Flux du programme étape par étape :
+
+1.  **Initialisation** : Le programme détecte votre configuration réseau actuelle (IP locale, masque).
+2.  **Découverte** : Il envoie des requêtes légères (TCP Ping) à toutes les IP possibles du réseau pour voir qui répond.
+3.  **Collecte d'infos** : Pour chaque machine trouvée, il récupère son nom d'hôte (DNS) et son adresse MAC (ARP).
+4.  **Ciblage** : L'utilisateur choisit une machine spécifique à analyser plus en profondeur.
+5.  **Scan de ports** : Le programme tente d'ouvrir une connexion sur chaque port demandé.
+6.  **Inspection** : Si un port est ouvert, il télécharge la "bannière" (le message d'accueil du service) pour identifier le logiciel utilisé.
+7.  **Rapport** : Il affiche un tableau récapitulatif coloré et génère un fichier JSON.
+
+---
+
+## 🗂️ Structure du projet
+
+L'organisation des fichiers respecte les bonnes pratiques de modularité en Python :
+
+- 📄 `main.py` : Le **cerveau** du projet. Il gère l'interface utilisateur, les menus et coordonne les différents modules de scan.
+- 📁 `scanner/` : Le dossier contenant toute la **logique technique**.
+  - `host_discovery.py` : Contient les fonctions pour trouver les machines sur le réseau (Ping).
+  - `port_scanner.py` : Gère le scan des ports TCP, la lecture des bannières et la détection de version.
+  - `device_info.py` : Utilise des protocoles comme ARP pour obtenir les adresses MAC et le DNS inversé pour les noms.
+  - `utils.py` : Fonctions utilitaires pour valider les adresses IP et manipuler les réseaux CIDR.
+- 📁 `outputs/` : Dossier où sont stockés les rapports de scan (ex: `scan_result.json`).
+- 📄 `requirements.txt` : Liste des bibliothèques externes nécessaires.
+
+---
+
+## 🔍 Explication du code
+
+### 1. Les bibliothèques clés utilisées
+
+- **`scapy`** : Une bibliothèque ultra-puissante pour manipuler les paquets réseau (utilisée ici pour les requêtes ARP).
+- **`socket`** : Le module standard de Python pour les communications réseau de bas niveau.
+- **`concurrent.futures`** : Permet de lancer plusieurs scans en même temps (Multi-threading) pour aller 100x plus vite.
+- **`colorama`** : Ajoute des couleurs dans le terminal pour rendre le texte lisible.
+- **`tqdm`** : Affiche de jolies barres de progression pendant les scans longs.
+
+### 2. Zoom sur une fonction : `scan_tcp`
+
+Cette fonction est le cœur du scanner de ports. Voici son principe :
+
+```python
+# Extrait simplifié de scanner/port_scanner.py
+def scan_tcp(ip, port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(1.5)
+        result = s.connect_ex((ip, port))
+        if result == 0:
+            return "OUVERT"
+        return "FERMÉ"
 ```
 
----
-
-## 📖 3. Le Parcours du Scan : Une Histoire
-
-Voici exactement ce qui se passe quand vous lancez le programme :
-
-1.  **L'Accueil** : Une bannière stylée s'affiche.
-2.  **La Phase de Découverte (LAN)** : Le programme vous demande un sous-réseau (ex: `192.168.1.0/24`). Il lance alors un "TCP Ping Sweep" ultra-rapide sur les 254 adresses possibles pour voir qui répond.
-3.  **Le Tableau de Bord** : Un tableau s'affiche avec toutes les machines trouvées, leur nom (si disponible) et leur adresse MAC.
-4.  **Le Choix Crucial** : Vous avez le choix :
-    - Scanner une des machines que vous venez de trouver localement.
-    - Scanner une **personnalité externe** (une IP publique sur Internet).
-    - Quitter.
-5.  **L'Analyse de Précision** : Si vous choisissez une IP publique, le scanner vérifie d'abord si elle est bien "publique" et si elle est joignable.
-6.  **Le Verdict** : Vous choisissez votre mode de scan (Rapide, Complet ou Personnalisé). Une barre de progression s'anime, et à la fin, un rapport détaillé est généré sur votre écran et sauvegardé en fichier JSON.
+- `socket.AF_INET` : On communique via IPv4.
+- `socket.SOCK_STREAM` : On utilise le protocole TCP (fiable).
+- `connect_ex` : Tente la connexion. S'il renvoie `0`, la porte est ouverte !
 
 ---
 
-## 🔬 4. Explication Fichiers & Fonctions (Niveau Expert)
+## 💻 Installation et exécution
 
-### 🛠️ `scanner/utils.py`
-Ce fichier est le "cerveau mathématique" de la validation.
-- `validate_cidr(subnet)` : Vérifie que le format du réseau entré est correct.
-- `is_public_ip(ip)` : Utilise une liste de plages réservées (10.0.0.0, 192.168.0.0, etc.) pour confirmer si une IP est exposée sur le Web ou purement locale.
+### Prérequis
 
-### 🔎 `scanner/host_discovery.py`
-C'est ici que la détection se passe.
-- `tcp_ping(ip)` : Au lieu d'un simple "ping" classique (ICMP) souvent bloqué par les pare-feux, on tente une connexion TCP sur des ports communs (80, 443, 22). Si l'hôte répond, il est marqué comme actif.
-- `scan_subnet(subnet)` : Utilise le **Multi-threading** pour scanner des centaines d'IP en simultané.
+- **Python 3.8+** installé sur votre système.
+- Droits administrateur (requis pour certaines fonctions réseau comme ARP/Scapy).
 
-### ℹ️ `scanner/device_info.py`
-Collecte les détails sur l'appareil.
-- `get_hostname_dns(ip)` : Tente une "résolution inverse" pour trouver le nom de l'ordinateur (ex: `PC-DE-NICOLAS`).
-- `get_mac_arp(ip)` : Utilise le protocole ARP (via la librairie Scapy) pour trouver l'adresse physique (MAC) de la carte réseau. *Uniquement pour le réseau local.*
+### Installation
 
-### ⚡ `scanner/port_scanner.py`
-Le moteur de scan à haute vitesse.
-- `scan_tcp(ip, port)` : Tente une connexion "furtive" (`connect_ex`) pour voir si le port est ouvert.
-- `scan_ports(ip, ports)` : Lance jusqu'à **200 agents (threads)** en même temps pour finir le scan en quelques secondes au lieu de plusieurs minutes.
+1. Clonez ou téléchargez le projet.
+2. Ouvrez un terminal dans le dossier du projet.
+3. Installez les dépendances :
+   ```bash
+   pip install -r requirements.txt
+   ```
 
----
+### Lancement
 
-## 📚 5. Les Bibliothèques Utilisées
+Pour démarrer le programme, lancez simplement :
 
-- **`socket`** : La base de la communication réseau. Elle permet de "frapper à la porte" des ports TCP.
-- **`ipaddress`** : Gère proprement les calculs complexes d'adresses IP.
-- **`concurrent.futures`** : Permet le Multi-threading (faire plusieurs choses à la fois pour gagner du temps).
-- **`scapy`** : Un outil puissant pour forger des paquets réseau (utilisé ici pour l'ARP).
-- **`tqdm`** : Affiche la magnifique barre de progression pendant le scan.
-- **`colorama`** : Ajoute de la couleur dans votre terminal pour une meilleure lisibilité.
-
----
-
-## 🌐 6. Concepts Réseau pour Débutants
-
-- **Adresse IP** : C'est "l'adresse postale" de votre ordinateur sur le réseau.
-- **IP Publique vs Privée** : 
-    - **Privée** : Votre adresse à l'intérieur de votre maison (ex: `192.168.x.x`).
-    - **Publique** : Votre adresse sur Internet (celle que Google voit).
-- **Le Port** : Imaginez un immeuble (l'IP). Chaque appartement est un "Port". Le port 80 est souvent pour le Web, le port 22 pour le contrôle à distance.
-- **TCP (Transmission Control Protocol)** : C'est comme un appel téléphonique sécurisé. On appelle (`SYN`), on nous répond (`SYN-ACK`), et la connexion est établie.
-- **ARP** : C'est la question "Qui a cette IP ? Donne-moi ton adresse physique MAC !".
-
----
-
-## ⚙️ 7. Guide d'Installation
-
-### 📋 Prérequis
-Assurez-vous d'avoir [Python 3.10+](https://www.python.org/downloads/) installé.
-
-### 🚀 Étapes
-1.  **Cloner le projet** :
-    ```bash
-    git clone https://github.com/Amine-NAHLI/smart-network-mapper.git
-    cd smart-network-mapper
-    ```
-2.  **Créer un environnement virtuel (optionnel mais conseillé)** :
-    ```bash
-    python -m venv .venv
-    .venv\Scripts\activate  # Sur Windows
-    ```
-3.  **Installer les dépendances** :
-    ```bash
-    pip install -r requirements.txt
-    ```
-
----
-
-## 🎮 8. Comment l'Utiliser ?
-
-Lancez simplement la commande suivante :
 ```bash
 python main.py
 ```
 
-1.  Entrez votre sous-réseau (ex: `192.168.1.0/24`).
-2.  Attendez la fin de la découverte.
-3.  Choisissez l'action souhaitée (1, 2 ou 3).
-4.  Laissez le scanner faire son travail !
+---
+
+## 📡 Exemple concret d'utilisation
+
+Imaginez que vous voulez voir ce qui tourne sur votre box internet ou votre ordinateur :
+
+1. **Entrée** : Vous choisissez le mode "Détection automatique".
+2. **Traitement** :
+   - Le programme trouve votre réseau : `192.168.1.0/24`.
+   - Il détecte votre PC à l'IP `192.168.1.15`.
+   - Vous lancez un scan rapide sur les ports communs.
+3. **Sortie** :
+   - Le port `80` est **OUVERT**.
+   - Service détecté : `HTTP`.
+   - Version : `Apache/2.4.41`.
+   - Un fichier `scan_result.json` est créé avec ces détails.
 
 ---
 
-## 📊 9. Comprendre les Résultats
+## ⚠️ Gestion des erreurs
 
-- **Latence** : Le temps (en millisecondes) que met un paquet pour faire l'aller-retour. Plus c'est bas, plus la connexion est rapide.
-- **Statut OUVERT** : Un service est à l'écoute. C'est une porte ouverte.
-- **Service** : Le nom du programme probable qui utilise ce port (ex: HTTP, SSH, FTP).
+Le programme est robuste et prévoit plusieurs cas de figure :
 
----
-
-## 🔐 10. Conseils en Sécurité
-
-> [!WARNING]
-> Un port ouvert n'est pas une faille en soi, mais c'est une porte d'entrée potentielle.
-
-**Que faire ?**
-- Si vous trouvez un port `3306` (MySQL) ouvert sur une IP publique, **fermez-le immédiatement** via votre pare-feu !
-- Ne scannez que les réseaux pour lesquels vous avez une **autorisation explicite**.
+- **Timeout** : Si une machine est trop lente à répondre, le programme passe à la suivante sans se bloquer.
+- **Permission refusée** : Si Scapy ne peut pas accéder à la carte réseau (souvent par manque de privilèges `sudo` ou Admin), le programme bascule sur des méthodes alternatives plus simples.
+- **IP Invalide** : Le module `utils.py` vérifie chaque saisie utilisateur pour éviter les plantages.
 
 ---
 
-## 🚧 11. Limitations
-- Le scanner ne détecte pas les machines qui ignorent totalement les requêtes TCP (machines ultra-sécurisées).
-- L'adresse MAC n'est pas récupérable pour les IP publiques (Internet ne transmet pas cette info).
+## 🚀 Améliorations possibles
+
+- [ ] **Scan UDP** : Ajouter le support pour le protocole UDP (plus complexe car sans connexion).
+- [ ] **Détection d'OS** : Utiliser Scapy pour analyser la pile TCP/IP et deviner si la cible est sous Windows, Linux ou Android.
+- [ ] **Interface Graphique (GUI)** : Créer une fenêtre avec des graphiques pour visualiser le réseau.
+- [ ] **Historique** : Garder une trace de tous les scans passés dans une base de données SQLite.
 
 ---
 
-## 🚀 12. Améliorations Futures
-- **Banner Grabbing** : Récupérer la version exacte du logiciel derrière le port.
-- **Détection d'OS** : Deviner si la machine est sous Windows, Linux ou macOS.
-- **Interface Graphique (GUI)** : Une fenêtre moderne pour remplacer le terminal.
+## 📖 Glossaire
+
+- **IP (Internet Protocol)** : L'adresse postale de votre machine sur le réseau.
+- **Port** : Un numéro (0 à 65535) qui définit une application spécifique (ex: 80 pour le web).
+- **CIDR (192.168.1.0/24)** : Une notation raccourcie pour définir une plage d'adresses IP.
+- **ARP** : Le protocole qui permet de traduire une IP en adresse physique (MAC) sur un réseau local.
 
 ---
 
-## 👨‍💻 Auteur
-Développé avec passion par **Amine NAHLI**.
-🔗 [GitHub Profile](https://github.com/Amine-NAHLI)
+💡 **Conseil d'expert** : Pour comprendre le projet, commencez par lire `scanner/utils.py` (la base), puis remontez vers `main.py`.
+
+_Développé avec ❤️ par Amine Nahli._
