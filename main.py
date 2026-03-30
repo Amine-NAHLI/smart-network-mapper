@@ -1,31 +1,32 @@
-import sys
-import os
-import json
-from datetime import datetime
+import sys #arreter le prog proprement au cas d'erreur
+import os #cree le dossier des outpus si il nexsite pas
+import json #pour sauvegarder les resultats JSON
+from datetime import datetime #POUR LA DATE ET LHEURE DES RESULTATS
 
 try:
     from colorama import Fore, Style, init
+    #AJOUTER LES COULEURS au terminal
     init(autoreset=True)
 except ImportError:
+    #si c'est pas installer on utilise mockcolor pour forcer lutilisation des couleurs 
     class MockColor:
         def __getattr__(self, name):
             return ""
     Fore = Style = MockColor()
 
-import socket
+import socket #pour travailler avec le reseau
 try:
-    import psutil
+    import psutil #pour obtenir les informations sur le reseau(on va pas arreter le prog si c'est pas installer car il y'a possibilite de le faire manuellement)
 except ImportError:
     psutil = None
 
-from tqdm import tqdm
-import ipaddress
+from tqdm import tqdm #pour afficher les barres de progression
+import ipaddress #valider et calculer des adresses IP
 from scanner.utils import validate_cidr, is_public_ip
 from scanner.host_discovery import scan_subnet, tcp_ping
 from scanner.port_scanner import scan_ports
 
-# Ports les plus communs
-TOP_PORTS = [
+TOP_PORTS = [ 
     20, 21, 22, 23, 25, 53, 80, 110, 111, 135,
     139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080, 8443
 ]
@@ -72,7 +73,7 @@ def display_hosts_table(hosts):
 
 def display_ports_table(resultats):
     """
-    Affiche les résultats du scan dans un tableau style Nmap.
+    Affiche les résultats du scan dans un tableau 
     """
     column_port = "PORT"
     column_status = "ÉTAT"
@@ -83,15 +84,15 @@ def display_ports_table(resultats):
     print("-" * 80)
 
     for res in resultats:
-        port_protocol = f"{res['port']}/tcp"
-        status = res["statut"].upper()
-        service = res["service"].lower()
+        port_protocol = f"{res['port']}/tcp" #on ajoute /tcp pour indiquer que c'est un port tcp
+        status = res["statut"].upper() #on met le statut en majuscule
+        service = res["service"].lower() #on met le service en minuscule
         
         if res["statut"] == "ouvert":
             status_color = Fore.GREEN
-            version = res.get("version", "Inconnue")
+            version = res.get("version", "Inconnue") #on recupere la version
             if version == "Non détectée" or version == "N/A":
-                version = res.get("banner", "Inconnue")[:40]
+                version = res.get("banner", "Inconnue")[:40] #on recupere la banniere
         elif res["statut"] == "fermé":
             status_color = Fore.RED
             version = ""
@@ -106,35 +107,33 @@ def display_ports_table(resultats):
 
 
 def detect_lan_config():
-    """
-    Détecte automatiquement les interfaces réseau actives et priorise le Wi-Fi.
-    Filtre les interfaces actives (isup=True) et les adresses IPv4 valides.
-    """
+ 
     if psutil is None:
         return None
 
     try:
-        interfaces = psutil.net_if_addrs()
-        stats = psutil.net_if_stats()
+        interfaces = psutil.net_if_addrs()#retourn les interfaces du pc
+        stats = psutil.net_if_stats()#retourn les stats des interfaces
         all_configs = []
 
+        #avec continue on saute les interfaces qui ne sont pas actives 
         for iface_name, addrs in interfaces.items():
-            # 1. Vérifier si l'interface est active (isup)
             if iface_name in stats and not stats[iface_name].isup:
                 continue
+            
                 
             for addr in addrs:
-                # 2. Ne sélectionner que les adresses IPv4
-                if addr.family == socket.AF_INET:
+                # 2. Ne sélectionner que les adresses IPv4 de chaque interface
+                if addr.family == socket.AF_INET: #AF_INET pour IPv4
                     ip = addr.address
                     netmask = addr.netmask
                     
-                    # Ignorer les interfaces de boucle locale (loopback) et les IPs invalides
+                    # ignorer les interfaces (loopback) et les IPs invalides
                     if ip.startswith("127.") or not netmask:
                         continue
                     
                     try:
-                        # 3. Calculer le réseau CIDR réel avec ipaddress
+                        # PAR EXEMPLE: transformer 192.168.1.15 avec masque 255.255.255.0 en 192.168.1.0/24
                         network = ipaddress.IPv4Network(f"{ip}/{netmask}", strict=False)
                         all_configs.append({
                             "interface": iface_name,
@@ -149,19 +148,14 @@ def detect_lan_config():
             return None
 
         # 4. Priorisation : Wi-Fi > Ethernet > Autres
-        # Recherche d'interfaces Wi-Fi (noms contenant : "Wi-Fi", "WiFi", "wlan")
         wifi_interfaces = [c for c in all_configs if any(t in c["interface"].lower() for t in ["wi-fi", "wifi", "wlan"])]
-        # Recherche d'interfaces Ethernet (eth, en0, en1, etc.)
         eth_interfaces = [c for c in all_configs if any(t in c["interface"].lower() for t in ["eth", "en0", "en1", "ethernet", "local area"])]
-        # Autres interfaces actives
         others = [c for c in all_configs if c not in wifi_interfaces and c not in eth_interfaces]
 
         if wifi_interfaces:
-            # On prend la première carte Wi-Fi trouvée
             return wifi_interfaces[0]
         
         if eth_interfaces:
-            # Message spécifique si on bascule sur Ethernet
             print(f"\n  {Fore.YELLOW}[!] Wi-Fi non détecté, utilisation de l’Ethernet...{Style.RESET_ALL}")
             return eth_interfaces[0]
             
@@ -172,14 +166,11 @@ def detect_lan_config():
         return None
         
     except Exception:
-        # Robustesse : retourne None au lieu de planter
         return None
 
 
 def choisir_mode_scan():
-    """
-    Affiche le menu de sélection du mode de scan et retourne la liste de ports à scanner.
-    """
+    
     print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
     print(f"║              SÉLECTION DU MODE DE SCAN                  ║")
     print(f"╠══════════════════════════════════════════════════════════╣")
@@ -208,14 +199,15 @@ def choisir_mode_scan():
         elif choix == "3":
             print(f"\n  {Fore.BLUE}[✔] Mode sélectionné : Scan Personnalisé{Style.RESET_ALL}")
             print(f"\n  {Fore.WHITE}Format accepté :{Style.RESET_ALL}")
-            print(f"    {Fore.CYAN}→{Style.RESET_ALL}  Port unique       : {Fore.WHITE}80{Style.RESET_ALL}")
-            print(f"    {Fore.CYAN}→{Style.RESET_ALL}  Plusieurs ports   : {Fore.WHITE}80,443,22{Style.RESET_ALL}")
-            print(f"    {Fore.CYAN}→{Style.RESET_ALL}  Plage de ports    : {Fore.WHITE}1-1024{Style.RESET_ALL}")
+            print(f"    {Fore.CYAN}→{Style.RESET_ALL}  Port unique(exemple)       : {Fore.WHITE}80{Style.RESET_ALL}")
+            print(f"    {Fore.CYAN}→{Style.RESET_ALL}  Plusieurs ports(exemple)   : {Fore.WHITE}80,443,22{Style.RESET_ALL}")
+            print(f"    {Fore.CYAN}→{Style.RESET_ALL}  Plage de ports(exemple)    : {Fore.WHITE}1-1024{Style.RESET_ALL}")
 
             saisie = input(f"\n  {Fore.WHITE}Entrez le(s) port(s) : {Style.RESET_ALL}").strip()
 
             ports = []
             try:
+                #si il saisie de scanner une plage de port
                 if "-" in saisie and "," not in saisie:
                     debut, fin = saisie.split("-")
                     debut, fin = int(debut.strip()), int(fin.strip())
@@ -226,10 +218,12 @@ def choisir_mode_scan():
                         print(f"  {Fore.RED}[✘] Plage invalide — les ports doivent être entre 1 et 65535.{Style.RESET_ALL}")
                         continue
 
+                #si il saisie de scanner plusieurs ports
                 elif "," in saisie:
                     ports = [int(p.strip()) for p in saisie.split(",") if 1 <= int(p.strip()) <= 65535]
                     print(f"  {Fore.YELLOW}[~] Durée estimée : ~{max(1, len(ports) // 10)} seconde(s){Style.RESET_ALL}")
 
+                #si il saisie de scanner un port unique
                 else:
                     port = int(saisie)
                     if 1 <= port <= 65535:
@@ -251,19 +245,18 @@ def choisir_mode_scan():
 
 def save_json(target_ip, resultats):
     """
-    Sauvegarde les résultats du scan dans outputs/scan_result.json.
-    Garantit une seule sauvegarde par scan.
+    sauvegarde et Garantit une seule sauvegarde par scan.
     """
-    os.makedirs("outputs", exist_ok=True)
+    os.makedirs("outputs", exist_ok=True) #créer le dossier outputs s'il n'existe pas
 
     date_jour = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    data = {
+    data = { 
         "cible": target_ip,
         "date": date_jour,
         "ports": []
     }
-
+ 
     for res in resultats:
         if res["statut"] == "ouvert":
             data["ports"].append({
@@ -275,16 +268,15 @@ def save_json(target_ip, resultats):
                 "banner": res.get("banner", "N/A")
             })
 
-    output_path = os.path.join("outputs", "scan_result.json")
+    output_path = os.path.join("outputs", "scan_result.json") #créer le fichier scan_result.json dans le dossier outputs
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    with open(output_path, "w", encoding="utf-8") as f: #ouvrir le fichier scan_result.json en mode écriture
+        json.dump(data, f, indent=4, ensure_ascii=False) #écrire les données dans le fichier scan_result.json
 
     print(f"\n  {Fore.GREEN}[✔] Résultats sauvegardés dans '{output_path}'.{Style.RESET_ALL}")
 
 
 def main():
-    # STEP 1 - Banner
     print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
     print(f"║                                                          ║")
     print(f"║           SMART NETWORK MAPPER SCANNER                  ║")
@@ -292,12 +284,10 @@ def main():
     print(f"║                                                          ║")
     print(f"╚══════════════════════════════════════════════════════════╝{Style.RESET_ALL}")
 
-    # STEP 2 - LAN Discovery
     print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
     print(f"│  ÉTAPE 1 — Découverte des hôtes sur le réseau           │")
     print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}")
 
-    # --- NOUVEAU MENU DE DÉTECTION RÉSEAU ---
     while True:
         print(f"\n  {Fore.WHITE}Que voulez-vous scanner ?{Style.RESET_ALL}")
         print(f"    {Fore.GREEN}[ 1 ]{Style.RESET_ALL}  Détecter et scanner mon réseau local automatiquement")
@@ -314,14 +304,12 @@ def main():
             if not config:
                 print(f"  {Fore.RED}[✘] Échec de la détection automatique (aucune interface Wi-Fi ou Ethernet active trouvée).{Style.RESET_ALL}")
                 print(f"  {Fore.YELLOW}[!] Veuillez entrer le réseau manuellement.{Style.RESET_ALL}")
-                # Fallback sur la saisie manuelle
                 while True:
                     subnet = input(f"\n  {Fore.WHITE}Sous-réseau cible (ex: 192.168.1.0/24) : {Style.RESET_ALL}").strip()
                     if validate_cidr(subnet):
                         break
                     print(f"  {Fore.RED}[✘] Format CIDR invalide.{Style.RESET_ALL}")
             else:
-                # Affichage clair du résultat de détection
                 print(f"  {Fore.GREEN}[✔] Réseau local détecté avec succès !{Style.RESET_ALL}")
                 print(f"      {Fore.CYAN}•{Style.RESET_ALL} Interface utilisée : {Fore.WHITE}{config['interface']}{Style.RESET_ALL}")
                 print(f"      {Fore.CYAN}•{Style.RESET_ALL} IP locale         : {Fore.WHITE}{config['ip']}{Style.RESET_ALL}")
@@ -358,7 +346,6 @@ def main():
         print(f"\n  {Fore.YELLOW}[!] Aucun hôte actif trouvé — fin du programme.{Style.RESET_ALL}")
         sys.exit(0)
 
-    # STEP 3 - Ask scan choice
     print(f"\n{Fore.WHITE}Que voulez-vous faire ?{Style.RESET_ALL}")
     print(f"  {Fore.CYAN}[ 1 ]  Scanner un hôte de ce réseau{Style.RESET_ALL}")
     print(f"  {Fore.CYAN}[ 2 ]  Scanner une IP externe (publique){Style.RESET_ALL}")
@@ -450,20 +437,17 @@ def main():
     resultats = sorted(unique_results_dict.values(), key=lambda x: x["port"])
 
     # STEP 8 - Display results, call save_json(), display_ports_table()
-    # BUG : L'affichage et la sauvegarde étaient susceptibles d'être dupliqués si le code précédent passait des listes corrompues.
     # SOLUTION : Ces appels sont strictement isolés à la fin du flux principal, utilisant les données dédoublonnées.
     print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
     print(f"│  RÉSULTATS DU SCAN                                       │")
     print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}\n")
-
-    # L'affichage détaillé par port a déjà été simplifié ou peut être omis si on utilise le tableau Nmap.
-    # On va garder un affichage rapide ici puis le tableau final.
-    for res in resultats:
+ 
+    for res in resultats: 
         port = res["port"]
         statut = res["statut"]
         service = res["service"]
         banner = res.get("banner", "")
-
+ 
         if statut == "ouvert":
             print(f"  {Fore.GREEN}[+]{Style.RESET_ALL} Port {port}/TCP : {Fore.GREEN}OUVERT{Style.RESET_ALL} ({service}) -> {res.get('version', 'Inconnue')}")
         elif statut == "fermé":
@@ -474,9 +458,7 @@ def main():
     # La sauvegarde JSON n'est appelée qu'une fois avec l'ensemble des résultats uniques.
     save_json(target_ip, resultats)
     
-    # Le tableau récapitulatif final utilise également la liste unique.
-    print(f"\n  {Fore.BLUE}[→] Récapitulatif — ports ouverts uniquement :{Style.RESET_ALL}\n")
-    display_ports_table(resultats)
+   
 
     print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
     print(f"║               Scan terminé avec succès                  ║")
