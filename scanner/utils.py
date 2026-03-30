@@ -41,9 +41,6 @@ def is_public_ip(ip: str) -> bool:
     try:
         addr = ipaddress.ip_address(ip)
         
-        # Plages exclues :
-        # 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8,
-        # 169.254.0.0/16, 0.0.0.0/8, 224.0.0.0/4, 240.0.0.0/4
         excluded_ranges = [
             ipaddress.ip_network("10.0.0.0/8"),
             ipaddress.ip_network("172.16.0.0/12"),

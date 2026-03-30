@@ -455,11 +455,8 @@ def main():
         else:
             print(f"  {Fore.YELLOW}[!]{Style.RESET_ALL} Port {port}/TCP : {Fore.YELLOW}{statut.upper()}{Style.RESET_ALL} ({service}) -> {banner}")
 
-    # La sauvegarde JSON n'est appelée qu'une fois avec l'ensemble des résultats uniques.
     save_json(target_ip, resultats)
     
-   
-
     print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
     print(f"║               Scan terminé avec succès                  ║")
     print(f"╚══════════════════════════════════════════════════════════╝{Style.RESET_ALL}\n")

@@ -21,33 +21,29 @@ def get_hostname_dns(ip):
 
 def get_mac_arp(ip):
     """
-    Récupère l'adresse MAC via ARP
+    Récupère l'adresse MAC via la commande système ARP.
     """
-    if not SCAPY_AVAILABLE:
-        return 'Unknown'
+    import subprocess
+    import re
+    import os
 
     try:
-        #cree un paquet arp qui va etre envoyer a tous les adresse ip pour leur di voila cette ip si tu a cette adresse ip renvoie moi ton adresse mac
-        arp_request = ARP(pdst=ip)
-        broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
-        packet = broadcast / arp_request
-        # / veut dire qu'on va combiner les deux paquets on va demander a qui cette adresse ip et pour tous le monde c'est ce 
-        #broadcast contient tous les machine et arp_request contient l'adresse ip qu'on veut connaitre son adresse mac =le message
+        # Commande selon l'OS : "arp -a" sur Windows, "arp -n" sur Linux/Mac
+        command = ["arp", "-a", ip] if os.name == 'nt' else ["arp", "-n", ip]
 
-
-        #c'est ici que le paquet est envoyer et on attend la reponse
-        #[0] prendre juste les machines qui ont repondu 
-        result = srp(packet, timeout=1, verbose=0)[0]
+        # Exécution de la commande avec capture de la sortie
+        result = subprocess.run(command, capture_output=True, text=True, timeout=2)
         
-        if result:
-            return result[0][1].hwsrc
-            """
-            result[0][1] → dans cette réponse, on prend le paquet reçu [1] (pas celui qu'on a envoyé [0]).
-            .hwsrc → dans ce paquet, on extrait l'adresse MAC de la machine qui a répondu (hw = hardware, src = source).
-            """
-        return 'Unknown'
+        if result.returncode != 0:
+            return "Inconnu"
+
+        # Recherche de la MAC avec la regex : ([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}
+        mac_regex = r"([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}"
+        match = re.search(mac_regex, result.stdout)
+
+        return match.group(0) if match else "Inconnu"
     except Exception:
-        return 'Unknown'
+        return "Inconnu"
 
 def get_device_info(ip, is_public: bool = False):
     """
