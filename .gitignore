@@ -208,3 +208,4 @@ marimo/_lsp/
 __marimo__/
 model/dataset_model.csv 
 model/dataset_model_normalized.csv 
+*.pkl
