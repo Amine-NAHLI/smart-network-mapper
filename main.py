@@ -1,6 +1,7 @@
 import sys #arreter le prog proprement au cas d'erreur
 import os #cree le dossier des outpus si il nexsite pas
 import json #pour sauvegarder les resultats JSON
+import requests
 from datetime import datetime #POUR LA DATE ET LHEURE DES RESULTATS
 
 try:
@@ -243,7 +244,7 @@ def choisir_mode_scan():
             print(f"  {Fore.RED}[✘] Choix invalide — entrez 1, 2 ou 3.{Style.RESET_ALL}")
 
 
-def save_json(target_ip, resultats):
+def save_json(target_ip, resultats, ml_predictions={}):
     """
     sauvegarde et Garantit une seule sauvegarde par scan.
     """
@@ -259,13 +260,18 @@ def save_json(target_ip, resultats):
  
     for res in resultats:
         if res["statut"] == "ouvert":
+            port = res["port"]
+            pred = ml_predictions.get(port, {})
             data["ports"].append({
-                "port": res["port"],
+                "port": port,
                 "protocole": "TCP",
                 "statut": "ouvert",
                 "service": res["service"],
                 "version": res.get("version", "N/A"),
-                "banner": res.get("banner", "N/A")
+                "banner": res.get("banner", "N/A"),
+                "vulnerable": pred.get("vulnerable", None),
+                "confidence": pred.get("confidence", None),
+                "label": pred.get("label", "N/A")
             })
 
     output_path = os.path.join("outputs", "scan_result.json") #créer le fichier scan_result.json dans le dossier outputs
@@ -274,6 +280,42 @@ def save_json(target_ip, resultats):
         json.dump(data, f, indent=4, ensure_ascii=False) #écrire les données dans le fichier scan_result.json
 
     print(f"\n  {Fore.GREEN}[✔] Résultats sauvegardés dans '{output_path}'.{Style.RESET_ALL}")
+
+
+def send_to_ml(resultats):
+    """
+    Filtre les ports ouverts et envoie au serveur ML pour prédiction.
+    """
+    # 1. Filtre uniquement les ports avec statut "ouvert"
+    open_ports = [res for res in resultats if res["statut"] == "ouvert"]
+    if not open_ports:
+        return {}
+
+    # 2. Envoie une requête POST (format {"ports": [...]})
+    payload = {"ports": open_ports}
+    
+    try:
+        # 3. Timeout de 3 secondes
+        response = requests.post("http://localhost:5000/predict/batch", json=payload, timeout=3)
+        
+        # 4. Si la réponse est OK, retourne un dict {port_number: prediction_dict}
+        if response.status_code == 200:
+            ml_data = response.json()
+            # On construit le dictionnaire de retour par numéro de port
+            return {
+                int(item["port"]): {
+                    "vulnerable": item["vulnerable"],
+                    "confidence": item["confidence"],
+                    "label": item["label"]
+                } for item in ml_data
+            }
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        # 5. Si erreur de connexion ou timeout
+        print(f"\n  {Fore.YELLOW}[!] Serveur ML non disponible — prédictions désactivées{Style.RESET_ALL}")
+    except Exception:
+        pass
+        
+    return {}
 
 
 def main():
@@ -430,6 +472,9 @@ def main():
         sys.exit(0)
     pbar.close()
 
+    # Appel au serveur ML juste après pbar.close()
+    ml_predictions = send_to_ml(resultats_bruts)
+
     # BUG : Même si scan_ports est propre, il est possible que des doublons surviennent par erreur.
     # SOLUTION : On utilise un dictionnaire {port: résultat} pour garantir qu'un même port
     # ne soit pas affiché ou sauvegardé deux fois.
@@ -442,20 +487,62 @@ def main():
     print(f"│  RÉSULTATS DU SCAN                                       │")
     print(f"└──────────────────────────────────────────────────────────┘{Style.RESET_ALL}\n")
  
-    for res in resultats: 
+    for i, res in enumerate(resultats): 
         port = res["port"]
         statut = res["statut"]
         service = res["service"]
         banner = res.get("banner", "")
+        version = res.get("version", "N/A")
  
         if statut == "ouvert":
-            print(f"  {Fore.GREEN}[+]{Style.RESET_ALL} Port {port}/TCP : {Fore.GREEN}OUVERT{Style.RESET_ALL} ({service}) -> {res.get('version', 'Inconnue')}")
-        elif statut == "fermé":
-            print(f"  {Fore.RED}[-]{Style.RESET_ALL} Port {port}/TCP : {Fore.RED}FERMÉ{Style.RESET_ALL}  ({service}) -> {banner}")
-        else:
-            print(f"  {Fore.YELLOW}[!]{Style.RESET_ALL} Port {port}/TCP : {Fore.YELLOW}{statut.upper()}{Style.RESET_ALL} ({service}) -> {banner}")
+            # Header du port ouvert
+            print(f"  {Fore.GREEN}[+]{Style.RESET_ALL} Port {Fore.WHITE}{port}/TCP{Style.RESET_ALL} : {Fore.GREEN}OUVERT{Style.RESET_ALL} ({service}) -> {version}")
+            
+            # Préparation des lignes de détails
+            details = []
+            
+            # 1. Banner
+            exclude_banner = ["", None, "N/A", "Non détectée", "Réponse vide"]
+            if banner and banner not in exclude_banner:
+                details.append(("Banner    ", banner))
+            
+            # 2. Version
+            exclude_version = ["", None, "N/A", "Non détectée", "Version inconnue"]
+            if version and version not in exclude_version:
+                details.append(("Version   ", version))
+                
+            # 3. Service
+            details.append(("Service   ", service))
+            
+            # 4. ML Prediction (toujours en dernier)
+            ml_text = f"{Fore.WHITE}⚪ Non analysé{Style.RESET_ALL}"
+            if port in ml_predictions:
+                pred = ml_predictions[port]
+                conf = pred['confidence']
+                if pred["vulnerable"] == 1:
+                    ml_text = f"{Fore.RED}⚠️  VULNERABLE (confiance: {conf}%){Style.RESET_ALL}"
+                else:
+                    ml_text = f"{Fore.GREEN}✅ NON VULNERABLE (confiance: {conf}%){Style.RESET_ALL}"
+            details.append(("ML        ", ml_text))
 
-    save_json(target_ip, resultats)
+            # Affichage des détails avec branches Cyan
+            for idx, (label, val) in enumerate(details):
+                connector = "└─" if idx == len(details) - 1 else "├─"
+                print(f"      {Fore.CYAN}{connector}{Style.RESET_ALL} {label}: {val}")
+            
+            # Ligne vide pour la lisibilité entre les ports ouverts (si ce n'est pas le dernier)
+            print()
+
+        elif statut == "fermé":
+            print(f"  {Fore.RED}[-]{Style.RESET_ALL} Port {Fore.WHITE}{port}/TCP{Style.RESET_ALL} : {Fore.RED}FERMÉ{Style.RESET_ALL} ({service})")
+        
+        else:
+            # Cas filtré / timeout
+            print(f"  {Fore.YELLOW}[~]{Style.RESET_ALL} Port {Fore.WHITE}{port}/TCP{Style.RESET_ALL} : {Fore.YELLOW}FILTRÉ{Style.RESET_ALL} ({service})")
+            raison = banner.replace("ERREUR: ", "") if banner else "Timeout"
+            print(f"      {Fore.CYAN}└─{Style.RESET_ALL} Raison : {raison}")
+
+    save_json(target_ip, resultats, ml_predictions)
     
     print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
     print(f"║               Scan terminé avec succès                  ║")
