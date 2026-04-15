@@ -22,6 +22,7 @@ Il permet d'explorer votre réseau local (LAN) ou des serveurs distants pour dé
 ✅ **Scan de ports multi-threadé** : Analyse des milliers de ports en quelques secondes grâce à l'exécution en parallèle.  
 ✅ **Identification de services** : Reconnaît automatiquement les services courants (HTTP, SSH, FTP, etc.).  
 ✅ **Banner Grabbing & Versioning** : Tente de lire la "signature" du service pour deviner sa version exacte.  
+✅ **Machine Learning (Predictive)** : Analyse de vulnérabilités potentielles basée sur un modèle Random Forest entraîné.  
 ✅ **Support IP Publique** : Permet aussi de scanner des serveurs sur Internet (avec validation de sécurité).  
 ✅ **Export JSON** : Sauvegarde automatiquement les résultats pour une analyse ultérieure.
 
@@ -39,7 +40,8 @@ Le programme suit un flux logique rigoureux pour garantir rapidité et précisio
 4.  **Ciblage** : L'utilisateur choisit une machine spécifique à analyser plus en profondeur.
 5.  **Scan de ports** : Le programme tente d'ouvrir une connexion sur chaque port demandé.
 6.  **Inspection** : Si un port est ouvert, il télécharge la "bannière" (le message d'accueil du service) pour identifier le logiciel utilisé.
-7.  **Rapport** : Il affiche un tableau récapitulatif coloré et génère un fichier JSON.
+7.  **Analyse IA** : (Optionnel) Le module `model` analyse les versions détectées pour prédire les vulnérabilités.
+8.  **Rapport** : Il affiche un tableau récapitulatif coloré et génère un fichier JSON.
 
 ---
 
@@ -53,7 +55,13 @@ L'organisation des fichiers respecte les bonnes pratiques de modularité en Pyth
   - `port_scanner.py` : Gère le scan des ports TCP, la lecture des bannières et la détection de version.
   - `device_info.py` : Utilise des protocoles comme ARP pour obtenir les adresses MAC et le DNS inversé pour les noms.
   - `utils.py` : Fonctions utilitaires pour valider les adresses IP et manipuler les réseaux CIDR.
+- 📁 `model/` : Le moteur d'**Intelligence Artificielle**.
+  - `code_training.py` : Script d'entraînement du modèle Random Forest.
+  - `normalize_data.py` : Préparation et normalisation des datasets.
+  - `*.pkl` : Fichiers de modèles et scalers sauvegardés.
+- 📁 `reporter/` : Module dédié à la génération de **rapports détaillés** (PDF/HTML).
 - 📁 `outputs/` : Dossier où sont stockés les rapports de scan (ex: `scan_result.json`).
+- 📁 `tests/` : Suite de **tests unitaires** pour garantir la fiabilité du scanner.
 - 📄 `requirements.txt` : Liste des bibliothèques externes nécessaires.
 
 ---
@@ -111,6 +119,14 @@ Pour démarrer le programme, lancez simplement :
 
 ```bash
 python main.py
+```
+
+### Exécution des tests
+
+Pour vérifier que tout fonctionne correctement, vous pouvez lancer la suite de tests avec `pytest` :
+
+```bash
+pytest tests/
 ```
 
 ---
