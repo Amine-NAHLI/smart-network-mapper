@@ -99,7 +99,7 @@ def scan_ports(ip: str, ports: list, progress_callback=None) -> list:
     resultats = []
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=200) as executor:
-        futures = {executor.submit(scan_tcp, ip, port): port for port in ports}
+        futures = {executor.submit(scan_tcp, ip, port): port for port in set(ports)}
         
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -120,4 +120,4 @@ def scan_ports(ip: str, ports: list, progress_callback=None) -> list:
     
     # Tri par numéro de port pour une lecture plus claire (style Nmap)
     resultats.sort(key=lambda x: x["port"])
-    return resultats
+    return resultats
