@@ -115,10 +115,9 @@ class SmartNetworkMapper(ctk.CTk):
         sep.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 10))
 
         for i, page in enumerate(PAGES):
-            # btn_frame sits in the sidebar grid; its children use pack
-            btn_frame = ctk.CTkFrame(sb, fg_color="transparent", height=40)
+            btn_frame = ctk.CTkFrame(sb, fg_color="transparent", height=48)
             btn_frame.grid(row=3 + i, column=0, sticky="ew", pady=1)
-            btn_frame.pack_propagate(False)     # keep fixed height=40
+            btn_frame.pack_propagate(False)
 
             accent = ctk.CTkFrame(btn_frame, width=3, fg_color="transparent", corner_radius=0)
             accent.pack(side="left", fill="y")
@@ -126,11 +125,11 @@ class SmartNetworkMapper(ctk.CTk):
 
             btn = ctk.CTkButton(
                 btn_frame,
-                text=f"  {PAGE_ICONS[page]}  {page}",
-                font=("Courier New", 11),
+                text=f"   {PAGE_ICONS[page]}   {page}",
+                font=("Courier New", 13),
                 anchor="w",
                 fg_color="transparent",
-                hover_color=BG_MAIN,
+                hover_color="#0d2137",
                 text_color=GRAY,
                 corner_radius=0,
                 command=lambda p=page: self._show_page(p),
@@ -162,7 +161,7 @@ class SmartNetworkMapper(ctk.CTk):
         self.active_page = name
         for page, btn in self.nav_buttons.items():
             if page == name:
-                btn.configure(text_color=CYAN, fg_color="#0d1f2d")
+                btn.configure(text_color=CYAN, fg_color="#0d2137")
                 self.nav_accents[page].configure(fg_color=CYAN)
             else:
                 btn.configure(text_color=GRAY, fg_color="transparent")
@@ -735,11 +734,17 @@ class SmartNetworkMapper(ctk.CTk):
         self.badge_vuln  = self._make_badge(badges, "VULNERABLE",    "—", RED)
         self.badge_safe  = self._make_badge(badges, "SAFE",          "—", GREEN)
 
-        # Table
-        self.res_table = ctk.CTkScrollableFrame(frame, fg_color=BG_SIDE,
-                                                 border_color=BORDER, border_width=1,
-                                                 corner_radius=8)
-        self.res_table.pack(fill="both", expand=True, padx=24, pady=(0, 8))
+        # Table — header stays fixed, only rows scroll
+        table_wrap = ctk.CTkFrame(frame, fg_color=BG_SIDE,
+                                   border_color=BORDER, border_width=1, corner_radius=8)
+        table_wrap.pack(fill="both", expand=True, padx=24, pady=(0, 8))
+
+        self.res_header = ctk.CTkFrame(table_wrap, fg_color=BG_SIDE, corner_radius=0)
+        self.res_header.pack(fill="x")
+
+        self.res_table = ctk.CTkScrollableFrame(table_wrap, fg_color="transparent",
+                                                 corner_radius=0)
+        self.res_table.pack(fill="both", expand=True)
 
         # Bottom buttons
         btns = ctk.CTkFrame(frame, fg_color="transparent")
@@ -817,54 +822,71 @@ class SmartNetworkMapper(ctk.CTk):
         self.badge_vuln.configure(text=str(len(vuln_p)))
         self.badge_safe.configure(text=str(len(safe_p)))
 
+        # ── Clear and rebuild sticky header ──────────────────────
+        for w in self.res_header.winfo_children():
+            w.destroy()
+
         if not ports:
             ctk.CTkLabel(self.res_table, text="No results available.",
                          font=("Segoe UI", 12), text_color=GRAY).pack(pady=40)
             return
 
         cols   = ["PORT", "PROTO", "STATUS", "SERVICE", "VERSION", "AI LABEL", "CONFIDENCE"]
-        widths = [60, 60, 80, 100, 160, 120, 100]
+        widths = [65, 60, 110, 110, 180, 130, 90]
 
-        hdr = ctk.CTkFrame(self.res_table, fg_color=BG_SIDE)
-        hdr.pack(fill="x", pady=(4, 2))
+        # Header row — sits outside the scroll area, always visible
+        sep_top = ctk.CTkFrame(self.res_header, height=1, fg_color=BORDER)
+        sep_top.pack(fill="x")
+        hdr_row = ctk.CTkFrame(self.res_header, fg_color=BG_SIDE, corner_radius=0)
+        hdr_row.pack(fill="x")
         for c, w in zip(cols, widths):
-            ctk.CTkLabel(hdr, text=c, font=("Courier New", 10),
-                         text_color=GRAY, width=w, anchor="w").pack(side="left", padx=6)
+            ctk.CTkLabel(hdr_row, text=c, font=("Courier New", 10),
+                         text_color=GRAY, width=w, anchor="w").pack(side="left", padx=6, pady=4)
+        sep_bot = ctk.CTkFrame(self.res_header, height=1, fg_color=BORDER)
+        sep_bot.pack(fill="x")
 
+        # ── Data rows ────────────────────────────────────────────
         for i, p in enumerate(ports):
-            row_bg  = BG_MAIN if i % 2 == 0 else BG_SIDE
+            row_bg  = BG_SIDE if i % 2 == 0 else BG_MAIN
             is_vuln = p.get("vulnerable") == 1
             statut  = p.get("statut", "")
             label   = p.get("label", "—")
             conf    = p.get("confidence", 0.0)
 
+            # Row text colour driven by status
+            if statut == "ouvert":
+                base_col = RED if is_vuln else CYAN
+            elif "filtré" in statut or "timeout" in statut:
+                base_col = GRAY
+            else:
+                base_col = "#2d3748"   # dimmed for fermé / erreur
+
+            label_col  = RED if is_vuln else (GREEN if statut == "ouvert" else GRAY)
+            label_font = ("Courier New", 10, "bold") if is_vuln else ("Courier New", 10)
+            conf_col   = RED if is_vuln else (GREEN if statut == "ouvert" else GRAY)
+
             row = ctk.CTkFrame(self.res_table, fg_color=row_bg, corner_radius=0)
             row.pack(fill="x")
 
-            stat_col   = CYAN if statut == "ouvert" else GRAY
-            label_col  = RED if is_vuln else GREEN if label == "NON VULNÉRABLE" else GRAY
-            label_font = ("Courier New", 10, "bold") if is_vuln else ("Courier New", 10)
-
-            row_vals   = [str(p.get("port", "")), p.get("protocole", "TCP"),
-                          statut, p.get("service", ""), p.get("version", "")]
-            row_colors = [WHITE, WHITE, stat_col, WHITE, WHITE]
-
-            for val, w, col_c in zip(row_vals, widths[:5], row_colors):
+            row_vals = [
+                str(p.get("port", "")),
+                p.get("protocole", "TCP"),
+                statut,
+                p.get("service", ""),
+                p.get("version", ""),
+            ]
+            for val, w in zip(row_vals, widths[:5]):
                 ctk.CTkLabel(row, text=val, font=("Courier New", 10),
-                             text_color=col_c, width=w, anchor="w").pack(
-                                 side="left", padx=6, pady=3)
+                             text_color=base_col, width=w, anchor="w").pack(
+                                 side="left", padx=6, pady=1)
 
             ctk.CTkLabel(row, text=label, font=label_font, text_color=label_col,
-                         width=widths[5], anchor="w").pack(side="left", padx=6)
+                         width=widths[5], anchor="w").pack(side="left", padx=6, pady=1)
 
-            conf_cell = ctk.CTkFrame(row, fg_color="transparent", width=widths[6])
-            conf_cell.pack(side="left", padx=6)
-            conf_cell.pack_propagate(False)
-            pb = ctk.CTkProgressBar(conf_cell, width=80, height=8,
-                                     progress_color=RED if is_vuln else GREEN,
-                                     fg_color=BORDER)
-            pb.pack(pady=9)
-            pb.set(min(conf / 100.0, 1.0))
+            conf_txt = f"{conf:.1f}%" if conf > 0 else "—"
+            ctk.CTkLabel(row, text=conf_txt, font=("Courier New", 10),
+                         text_color=conf_col, width=widths[6], anchor="w").pack(
+                             side="left", padx=6, pady=1)
 
     def _export_json(self):
         path = filedialog.asksaveasfilename(
