@@ -66,6 +66,10 @@ def _load_artifacts() -> None:
     _qt            = joblib.load(_QT_PATH)
     _feature_names = joblib.load(_FEATURES_PATH)
 
+def load_model():
+    """Charge manuellement les artefacts (utile au démarrage du serveur)."""
+    _load_artifacts()
+
 
 # Parsing de la chaine de version
 # ------------------------------

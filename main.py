@@ -1,7 +1,7 @@
 import sys #arreter le prog proprement au cas d'erreur
 import os #cree le dossier des outpus si il nexsite pas
 import json #pour sauvegarder les resultats JSON
-import requests
+# import requests (supprimé car l'IA est maintenant appelée localement)
 from datetime import datetime #POUR LA DATE ET LHEURE DES RESULTATS
 
 try:
@@ -23,7 +23,7 @@ except ImportError:
 
 from tqdm import tqdm #pour afficher les barres de progression
 import ipaddress #valider et calculer des adresses IP
-from scanner.utils import validate_cidr, is_public_ip
+from scanner.utils import validate_cidr, is_public_ip, detect_lan_config
 from scanner.host_discovery import scan_subnet, tcp_ping
 from scanner.port_scanner import scan_ports
 
@@ -107,67 +107,6 @@ def display_ports_table(resultats):
     print("-" * 80)
 
 
-def detect_lan_config():
- 
-    if psutil is None:
-        return None
-
-    try:
-        interfaces = psutil.net_if_addrs()#retourn les interfaces du pc
-        stats = psutil.net_if_stats()#retourn les stats des interfaces
-        all_configs = []
-
-        #avec continue on saute les interfaces qui ne sont pas actives 
-        for iface_name, addrs in interfaces.items():
-            if iface_name in stats and not stats[iface_name].isup:
-                continue
-            
-                
-            for addr in addrs:
-                # 2. Ne sélectionner que les adresses IPv4 de chaque interface
-                if addr.family == socket.AF_INET: #AF_INET pour IPv4
-                    ip = addr.address
-                    netmask = addr.netmask
-                    
-                    # ignorer les interfaces (loopback) et les IPs invalides
-                    if ip.startswith("127.") or not netmask:
-                        continue
-                    
-                    try:
-                        # PAR EXEMPLE: transformer 192.168.1.15 avec masque 255.255.255.0 en 192.168.1.0/24
-                        network = ipaddress.IPv4Network(f"{ip}/{netmask}", strict=False)
-                        all_configs.append({
-                            "interface": iface_name,
-                            "ip": ip,
-                            "netmask": netmask,
-                            "cidr": str(network)
-                        })
-                    except Exception:
-                        continue
-
-        if not all_configs:
-            return None
-
-        # 4. Priorisation : Wi-Fi > Ethernet > Autres
-        wifi_interfaces = [c for c in all_configs if any(t in c["interface"].lower() for t in ["wi-fi", "wifi", "wlan"])]
-        eth_interfaces = [c for c in all_configs if any(t in c["interface"].lower() for t in ["eth", "en0", "en1", "ethernet", "local area"])]
-        others = [c for c in all_configs if c not in wifi_interfaces and c not in eth_interfaces]
-
-        if wifi_interfaces:
-            return wifi_interfaces[0]
-        
-        if eth_interfaces:
-            print(f"\n  {Fore.YELLOW}[!] Wi-Fi non détecté, utilisation de l’Ethernet...{Style.RESET_ALL}")
-            return eth_interfaces[0]
-            
-        if others:
-            print(f"\n  {Fore.YELLOW}[!] Wi-Fi et Ethernet non détectés, utilisation d'une interface alternative...{Style.RESET_ALL}")
-            return others[0]
-
-        return None
-        
-    except Exception:
-        return None
 
 
 def choisir_mode_scan():
@@ -282,38 +221,42 @@ def save_json(target_ip, resultats, ml_predictions={}):
     print(f"\n  {Fore.GREEN}[✔] Résultats sauvegardés dans '{output_path}'.{Style.RESET_ALL}")
 
 
+from model.predictor import predict
+
 def send_to_ml(resultats):
     """
-    Filtre les ports ouverts et envoie au serveur ML pour prédiction.
+    Filtre les ports ouverts et effectue les prédictions localement.
     """
     # 1. Filtre uniquement les ports avec statut "ouvert"
     open_ports = [res for res in resultats if res["statut"] == "ouvert"]
     if not open_ports:
         return {}
 
-    # 2. Envoie une requête POST (format {"ports": [...]})
-    payload = {"ports": open_ports}
+    print(f"\n  {Fore.BLUE}[→] Analyse IA en cours (chargement du modèle)...{Style.RESET_ALL}")
     
+    predictions = {}
     try:
-        # 3. Timeout de 3 secondes
-        response = requests.post("http://localhost:5000/predict/batch", json=payload, timeout=3)
-        
-        # 4. Si la réponse est OK, retourne un dict {port_number: prediction_dict}
-        if response.status_code == 200:
-            ml_data = response.json()
-            # On construit le dictionnaire de retour par numéro de port
-            return {
-                int(item["port"]): {
-                    "vulnerable": item["vulnerable"],
-                    "confidence": item["confidence"],
-                    "label": item["label"]
-                } for item in ml_data
+        for item in open_ports:
+            port = item.get("port", 0)
+            version = item.get("version", "")
+            service = item.get("service", "")
+            
+            # Appel direct au modèle local
+            pred = predict(
+                port=port,
+                version_string=version,
+                service=service,
+                protocol="tcp" # par défaut
+            )
+            
+            predictions[port] = {
+                "vulnerable": pred["vulnerable"],
+                "confidence": round(pred["confidence"] * 100, 2),
+                "label": pred["label"]
             }
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        # 5. Si erreur de connexion ou timeout
-        print(f"\n  {Fore.YELLOW}[!] Serveur ML non disponible — prédictions désactivées{Style.RESET_ALL}")
-    except Exception:
-        pass
+        return predictions
+    except Exception as e:
+        print(f"\n  {Fore.RED}[✘] Erreur lors de l'analyse IA : {e}{Style.RESET_ALL}")
         
     return {}
 

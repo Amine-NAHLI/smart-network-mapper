@@ -60,7 +60,7 @@ def tcp_ping(ip: str, ports=[80, 443, 22, 8080], timeout=1) -> dict:
         "open_port": open_port
     }
 
-def scan_subnet(subnet, timeout=1, max_workers=200):
+def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None):
     """
     Scanne un sous-réseau en utilisant tcp_ping pour chaque hôte.
     """
@@ -74,8 +74,9 @@ def scan_subnet(subnet, timeout=1, max_workers=200):
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
             if result.get("alive"):
-                print(f"[+] Host {result['ip']:<15} is alive (Latency: {result['latency']} ms, Port: {result['open_port']})")
                 alive_hosts.append(result)
+                if host_callback:
+                    host_callback(result)
 
     # Tri par adresse IP
     alive_hosts.sort(key=lambda x: ipaddress.ip_address(x["ip"]))
