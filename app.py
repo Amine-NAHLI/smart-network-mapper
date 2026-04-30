@@ -57,8 +57,7 @@ class SmartNetworkMapper(ctk.CTk):
         ctk.set_default_color_theme("dark-blue")
 
         self.title("SMART NETWORK MAPPER v1.0")
-        self.geometry("1280x750")
-        self.resizable(False, False)
+        self.after(0, lambda: self.state('zoomed'))
         self.configure(fg_color=BG_MAIN)
 
         # Nav state
@@ -104,7 +103,8 @@ class SmartNetworkMapper(ctk.CTk):
         sb = ctk.CTkFrame(self, width=200, fg_color=BG_SIDE, corner_radius=0)
         sb.grid(row=0, column=0, sticky="nsew")
         sb.grid_propagate(False)
-        sb.grid_rowconfigure(8, weight=1)
+        sb.grid_columnconfigure(0, weight=1)   # fills the full 200 px width
+        sb.grid_rowconfigure(8, weight=1)       # pushes version label to bottom
 
         ctk.CTkLabel(sb, text="[ SNM ]", font=("Courier New", 16, "bold"),
                      text_color=CYAN).grid(row=0, column=0, padx=20, pady=(24, 2), sticky="w")
@@ -115,13 +115,13 @@ class SmartNetworkMapper(ctk.CTk):
         sep.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 10))
 
         for i, page in enumerate(PAGES):
+            # btn_frame sits in the sidebar grid; its children use pack
             btn_frame = ctk.CTkFrame(sb, fg_color="transparent", height=40)
-            btn_frame.grid(row=3 + i, column=0, sticky="ew", padx=0, pady=1)
-            btn_frame.grid_columnconfigure(1, weight=1)
-            btn_frame.grid_propagate(False)
+            btn_frame.grid(row=3 + i, column=0, sticky="ew", pady=1)
+            btn_frame.pack_propagate(False)     # keep fixed height=40
 
             accent = ctk.CTkFrame(btn_frame, width=3, fg_color="transparent", corner_radius=0)
-            accent.grid(row=0, column=0, sticky="ns")
+            accent.pack(side="left", fill="y")
             self.nav_accents[page] = accent
 
             btn = ctk.CTkButton(
@@ -135,7 +135,7 @@ class SmartNetworkMapper(ctk.CTk):
                 corner_radius=0,
                 command=lambda p=page: self._show_page(p),
             )
-            btn.grid(row=0, column=1, sticky="ew")
+            btn.pack(side="left", fill="both", expand=True)
             self.nav_buttons[page] = btn
 
         ctk.CTkLabel(sb, text="v1.0 | Python", font=("Segoe UI", 9),
