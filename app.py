@@ -13,13 +13,16 @@ import ctypes
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+import tkinter as tk
 from tkinter import filedialog, messagebox
+import webbrowser
 
 from scanner.host_discovery import scan_subnet
 from scanner.port_scanner import scan_tcp          # per-port, real-time results
 from scanner.device_info import get_hostname_dns, get_mac_arp
 from scanner.utils import detect_lan_config
 from model.predictor import predict
+from reporter.html_generator import generate_html_report
 
 # ── Palette ─────────────────────────────────────────────────────
 CYAN    = "#00f5ff"
@@ -83,6 +86,21 @@ class SmartNetworkMapper(ctk.CTk):
         self.cidr_var         = ctk.StringVar(value="")
         self.scan_mode_var    = ctk.StringVar(value="FAST")
         self.custom_ports_var = ctk.StringVar(value="")
+
+        # About page animation state
+        self._about_grid_y        = 0
+        self._about_scan_y        = 0.0
+        self._about_glow_on       = True
+        self._about_bullet_on     = True
+        self._about_grid_job      = None
+        self._about_scan_job      = None
+        self._about_glow_job      = None
+        self._about_bull_job      = None
+        self._about_title_id      = None   # canvas item for animated glow layer
+        self._about_canvas_w      = 1
+        self._about_canvas_h      = 260
+        self._about_cv            = None
+        self._about_bullet_labels = []
 
         self._build_layout()
         self._show_page("DASHBOARD")
@@ -158,6 +176,10 @@ class SmartNetworkMapper(ctk.CTk):
     # ── Navigation ──────────────────────────────────────────────
 
     def _show_page(self, name):
+        # Stop about animations when leaving that page
+        if self.active_page == "ABOUT" and name != "ABOUT":
+            self._stop_about_anims()
+
         self.active_page = name
         for page, btn in self.nav_buttons.items():
             if page == name:
@@ -171,6 +193,8 @@ class SmartNetworkMapper(ctk.CTk):
             self._refresh_dashboard()
         if name == "RESULTS":
             self._populate_results_page()
+        if name == "ABOUT":
+            self._start_about_anims()
 
     def _warn_admin(self):
         messagebox.showwarning(
@@ -611,7 +635,7 @@ class SmartNetworkMapper(ctk.CTk):
                             service=r.get("service", ""),
                         )
                         r["vulnerable"] = pred["vulnerable"]
-                        r["confidence"] = round(pred["confidence"] * 100, 2)
+                        r["confidence"] = pred["confidence"]
                         r["label"]      = pred["label"]
                     except Exception:
                         r["vulnerable"] = 0
@@ -652,11 +676,11 @@ class SmartNetworkMapper(ctk.CTk):
             if r.get("vulnerable") == 1:
                 color = RED
                 txt = (f"[OPEN]   port {port:<6} {svc:<10} {ver:<18}"
-                       f" → VULNÉRABLE ({conf:.1f}%)")
+                       f" → VULNÉRABLE ({conf*100:.1f}%)")
             else:
                 color = GREEN
                 txt = (f"[OPEN]   port {port:<6} {svc:<10} {ver:<18}"
-                       f" → SAFE ({conf:.1f}%)")
+                       f" → SAFE ({conf*100:.1f}%)")
         else:
             color = GRAY
             txt   = f"[{statut.upper():<7}] port {port:<6} {svc:<10}"
@@ -701,6 +725,13 @@ class SmartNetworkMapper(ctk.CTk):
         }
         with open(SCAN_RESULT_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+            
+        # Génération automatique du rapport HTML Premium
+        try:
+            report_path = os.path.join(OUTPUTS_DIR, "report.html")
+            generate_html_report(data, report_path)
+        except Exception:
+            pass
 
     # ════════════════════════════════════════════════════════════
     #  PAGE 3 — RESULTS
@@ -757,7 +788,11 @@ class SmartNetworkMapper(ctk.CTk):
                       command=lambda: self._show_page("NEW SCAN")).pack(side="left", padx=(0, 8))
         ctk.CTkButton(btns, text="[ DASHBOARD ]", font=("Courier New", 11),
                       fg_color=BORDER, text_color=CYAN, hover_color=BG_SIDE,
-                      command=lambda: self._show_page("DASHBOARD")).pack(side="left")
+                      command=lambda: self._show_page("DASHBOARD")).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(btns, text="[ VIEW HTML REPORT ]", font=("Courier New", 11, "bold"),
+                      fg_color="#0d2137", text_color=GREEN, border_color=GREEN, border_width=1,
+                      hover_color="#0a1a0a",
+                      command=self._open_html_report).pack(side="left")
 
         return frame
 
@@ -770,6 +805,13 @@ class SmartNetworkMapper(ctk.CTk):
         lbl = ctk.CTkLabel(f, text=val, font=("Courier New", 16, "bold"), text_color=color)
         lbl.pack(padx=14, pady=(0, 8))
         return lbl
+
+    def _open_html_report(self):
+        report_path = os.path.abspath(os.path.join(OUTPUTS_DIR, "report.html"))
+        if os.path.exists(report_path):
+            webbrowser.open(f"file://{report_path}")
+        else:
+            messagebox.showinfo("Report", "No HTML report found. Run a scan first.")
 
     def _populate_results_page(self):
         for w in self.res_table.winfo_children():
@@ -883,7 +925,7 @@ class SmartNetworkMapper(ctk.CTk):
             ctk.CTkLabel(row, text=label, font=label_font, text_color=label_col,
                          width=widths[5], anchor="w").pack(side="left", padx=6, pady=1)
 
-            conf_txt = f"{conf:.1f}%" if conf > 0 else "—"
+            conf_txt = f"{conf*100:.1f}%" if conf > 0 else "—"
             ctk.CTkLabel(row, text=conf_txt, font=("Courier New", 10),
                          text_color=conf_col, width=widths[6], anchor="w").pack(
                              side="left", padx=6, pady=1)
@@ -906,49 +948,230 @@ class SmartNetworkMapper(ctk.CTk):
             messagebox.showwarning("Export", "No scan data to export.")
 
     # ════════════════════════════════════════════════════════════
-    #  PAGE 4 — ABOUT
+    #  PAGE 4 — ABOUT  (cyberpunk 3-D canvas design)
     # ════════════════════════════════════════════════════════════
 
     def _build_about(self):
         frame = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
 
-        inner = ctk.CTkFrame(frame, fg_color="transparent")
-        inner.place(relx=0.5, rely=0.5, anchor="center")
+        # ── Animated canvas header ───────────────────────────────
+        self._about_cv = tk.Canvas(frame, height=260, bg=BG_MAIN,
+                                    highlightthickness=0)
+        self._about_cv.pack(fill="x")
+        self._about_cv.bind("<Configure>",
+                             lambda e: self._about_draw_static(e.width, e.height))
 
-        ascii_art = (
-            "███████╗███╗   ██╗███╗   ███╗\n"
-            "██╔════╝████╗  ██║████╗ ████║\n"
-            "███████╗██╔██╗ ██║██╔████╔██║\n"
-            "╚════██║██║╚██╗██║██║╚██╔╝██║\n"
-            "███████║██║ ╚████║██║ ╚═╝ ██║\n"
-            "╚══════╝╚═╝  ╚═══╝╚═╝     ╚═╝"
-        )
-        ctk.CTkLabel(inner, text=ascii_art, font=("Courier New", 11),
-                     text_color=CYAN, justify="center").pack(pady=(0, 14))
+        # ── Scrollable info section ──────────────────────────────
+        scroll = ctk.CTkScrollableFrame(frame, fg_color=BG_MAIN, corner_radius=0)
+        scroll.pack(fill="both", expand=True)
 
-        ctk.CTkLabel(inner, text="Smart Network Mapper",
-                     font=("Segoe UI", 14, "bold"), text_color=WHITE).pack()
-        ctk.CTkLabel(inner, text="AI-Powered Vulnerability Scanner",
-                     font=("Segoe UI", 11), text_color=GRAY).pack(pady=(2, 18))
+        center = ctk.CTkFrame(scroll, fg_color="transparent")
+        center.pack(pady=(20, 0))
 
-        for key, val in [("Version", "1.0.0"), ("Author", "Amine Nahli"), ("License", "MIT")]:
-            r = ctk.CTkFrame(inner, fg_color="transparent")
-            r.pack(pady=3)
-            ctk.CTkLabel(r, text=f"{key}:", font=("Courier New", 11),
-                         text_color=GRAY, width=80, anchor="e").pack(side="left")
-            ctk.CTkLabel(r, text=val, font=("Courier New", 11),
-                         text_color=WHITE).pack(side="left", padx=10)
+        ctk.CTkLabel(center, text="Smart Network Mapper",
+                     font=("Segoe UI", 18, "bold"), text_color=WHITE).pack()
+        ctk.CTkLabel(center, text="AI-Powered Vulnerability Scanner",
+                     font=("Courier New", 12), text_color=CYAN).pack(pady=(4, 14))
 
-        ctk.CTkLabel(inner, text="\nTech Stack",
-                     font=("Segoe UI", 10, "bold"), text_color=GRAY).pack()
-        ctk.CTkLabel(
-            inner,
-            text="Python  |  CustomTkinter  |  Scapy  |  RandomForest  |  Threading",
-            font=("Courier New", 10),
-            text_color=CYAN,
-        ).pack()
+        ctk.CTkFrame(center, height=1, fg_color=BORDER).pack(fill="x", padx=60, pady=(0, 20))
 
+        # ── 3 Info cards ─────────────────────────────────────────
+        cards_row = ctk.CTkFrame(center, fg_color="transparent")
+        cards_row.pack(pady=(0, 20))
+        for label, value in [("VERSION", "1.0.0"),
+                              ("AUTHOR",  "Amine Nahli"),
+                              ("LICENSE", "MIT")]:
+            cv = tk.Canvas(cards_row, width=168, height=82,
+                           bg=BG_MAIN, highlightthickness=0)
+            cv.pack(side="left", padx=10)
+            # Drop-shadow
+            cv.create_rectangle(4, 4, 168, 82, fill="#003344", outline="")
+            # Card body
+            cv.create_rectangle(0, 0, 163, 77, fill="#0d1117", outline="")
+            # Glowing border
+            cv.create_rectangle(1, 1, 162, 76, fill="", outline=CYAN, width=1)
+            # Label + value
+            cv.create_text(82, 26, text=label, fill=GRAY,
+                           font=("Courier New", 9, "bold"))
+            cv.create_text(82, 52, text=value, fill=WHITE,
+                           font=("Courier New", 14, "bold"))
+
+        # ── Tech badges (rounded-rect canvas) ────────────────────
+        techs   = ["Python", "CustomTkinter", "Scapy", "RandomForest", "Threading"]
+        pad_x, pad_y, gap = 14, 6, 10
+        badge_h = 28
+        # Pre-compute badge widths (Courier New 10 ≈ 7.2 px/char)
+        b_widths = [int(len(t) * 7.4) + pad_x * 2 for t in techs]
+        total_w  = sum(b_widths) + gap * (len(techs) - 1) + 2
+        badges_cv = tk.Canvas(center, width=total_w, height=badge_h + pad_y * 2,
+                               bg=BG_MAIN, highlightthickness=0)
+        badges_cv.pack(pady=(0, 20))
+        x = 1
+        for tech, bw in zip(techs, b_widths):
+            self._draw_rounded_rect(badges_cv, x, pad_y,
+                                     x + bw, pad_y + badge_h,
+                                     r=6, fill="#0d1117", outline=CYAN, width=1)
+            badges_cv.create_text(x + bw // 2, pad_y + badge_h // 2,
+                                   text=tech, fill=CYAN,
+                                   font=("Courier New", 10))
+            x += bw + gap
+
+        # ── Animated feature bullets ──────────────────────────────
+        ctk.CTkLabel(center, text="FEATURES", font=("Courier New", 10),
+                     text_color=GRAY).pack(anchor="w", padx=60, pady=(0, 6))
+        self._about_bullet_labels = []
+        features = [
+            "Real-time port scanning with ML prediction",
+            "Auto network discovery",
+            "Random Forest 99%+ accuracy",
+            "Multi-threaded scanning",
+        ]
+        for feat in features:
+            row = ctk.CTkFrame(center, fg_color="transparent")
+            row.pack(anchor="w", padx=60, pady=2)
+            bullet = ctk.CTkLabel(row, text="✦", font=("Segoe UI", 12),
+                                   text_color=CYAN)
+            bullet.pack(side="left", padx=(0, 8))
+            ctk.CTkLabel(row, text=feat, font=("Courier New", 11),
+                         text_color=WHITE).pack(side="left")
+            self._about_bullet_labels.append(bullet)
+
+        ctk.CTkFrame(center, height=1, fg_color="transparent").pack(pady=10)
         return frame
+
+    # ── Canvas drawing helpers ───────────────────────────────────
+
+    @staticmethod
+    def _draw_rounded_rect(canvas, x1, y1, x2, y2, r=8, **kw):
+        pts = [x1+r, y1,  x2-r, y1,
+               x2,   y1,  x2,   y1+r,
+               x2,   y2-r,x2,   y2,
+               x2-r, y2,  x1+r, y2,
+               x1,   y2,  x1,   y2-r,
+               x1,   y1+r,x1,   y1]
+        canvas.create_polygon(pts, smooth=True, **kw)
+
+    def _about_draw_static(self, w, h):
+        """Full redraw of the animated canvas. Called on Configure + resize."""
+        if w <= 1 or h <= 1:
+            return
+        self._about_canvas_w = w
+        self._about_canvas_h = h
+        cv = self._about_cv
+        cv.delete("all")
+
+        gs = 40   # grid spacing
+
+        # Vertical grid lines (static)
+        for x in range(0, w + gs, gs):
+            cv.create_line(x, 0, x, h, fill=CYAN, stipple="gray25", tags="grid_v")
+
+        # Horizontal grid lines (redrawn each animation tick)
+        self._about_redraw_grid_h()
+
+        # 3-D "SNM" title — shadow layers, deep to shallow
+        cx, cy = w // 2, h // 2 - 10
+        font = ("Courier New", 72, "bold")
+        for offset, color in [(6, "#001122"), (5, "#002233"),
+                               (4, "#003344"), (3, "#004455"),
+                               (2, "#005566"), (1, "#007788")]:
+            cv.create_text(cx + offset, cy + offset, text="SNM",
+                           fill=color, font=font, anchor="center")
+
+        # Top (animated glow) layer
+        glow = CYAN if self._about_glow_on else "#00dddd"
+        self._about_title_id = cv.create_text(cx, cy, text="SNM",
+                                               fill=glow, font=font,
+                                               anchor="center", tags="title_top")
+
+        # Subtitle
+        cv.create_text(cx, cy + 58, text="SMART NETWORK MAPPER",
+                       fill=GRAY, font=("Courier New", 13), anchor="center")
+
+        # Scan line (starts at top)
+        cv.create_line(0, 0, w, 0, fill=CYAN, width=2, tags="scanline")
+        self._about_scan_y = 0.0
+
+    def _about_redraw_grid_h(self):
+        """Redraw only the moving horizontal grid lines."""
+        cv = self._about_cv
+        w, h = self._about_canvas_w, self._about_canvas_h
+        if w <= 1:
+            return
+        gs = 40
+        cv.delete("grid_h")
+        offset = int(self._about_grid_y) % gs
+        y = offset - gs
+        while y < h + gs:
+            cv.create_line(0, y, w, y, fill=CYAN, stipple="gray25", tags="grid_h")
+            y += gs
+
+    # ── Animation loops ──────────────────────────────────────────
+
+    def _about_animate_grid(self):
+        if self.active_page != "ABOUT":
+            return
+        self._about_grid_y = (self._about_grid_y + 1) % 40
+        self._about_redraw_grid_h()
+        self._about_grid_job = self.after(55, self._about_animate_grid)
+
+    def _about_animate_scanline(self):
+        if self.active_page != "ABOUT":
+            return
+        h = self._about_canvas_h
+        w = self._about_canvas_w
+        self._about_scan_y += 2.0
+        if self._about_scan_y > h + 4:
+            self._about_scan_y = -2.0
+        y = int(self._about_scan_y)
+        try:
+            self._about_cv.coords("scanline", 0, y, w, y)
+        except Exception:
+            pass
+        self._about_scan_job = self.after(16, self._about_animate_scanline)
+
+    def _about_animate_glow(self):
+        if self.active_page != "ABOUT":
+            return
+        self._about_glow_on = not self._about_glow_on
+        color = CYAN if self._about_glow_on else "#00dddd"
+        try:
+            if self._about_title_id:
+                self._about_cv.itemconfig(self._about_title_id, fill=color)
+        except Exception:
+            pass
+        self._about_glow_job = self.after(800, self._about_animate_glow)
+
+    def _about_animate_bullets(self):
+        if self.active_page != "ABOUT":
+            return
+        self._about_bullet_on = not self._about_bullet_on
+        color = CYAN if self._about_bullet_on else WHITE
+        for lbl in self._about_bullet_labels:
+            try:
+                lbl.configure(text_color=color)
+            except Exception:
+                pass
+        self._about_bull_job = self.after(1000, self._about_animate_bullets)
+
+    def _start_about_anims(self):
+        # Guard: don't double-start
+        self._stop_about_anims()
+        self._about_animate_grid()
+        self._about_animate_scanline()
+        self._about_animate_glow()
+        self._about_animate_bullets()
+
+    def _stop_about_anims(self):
+        for attr in ("_about_grid_job", "_about_scan_job",
+                     "_about_glow_job", "_about_bull_job"):
+            job = getattr(self, attr, None)
+            if job:
+                try:
+                    self.after_cancel(job)
+                except Exception:
+                    pass
+                setattr(self, attr, None)
 
 
 # ════════════════════════════════════════════════════════════════

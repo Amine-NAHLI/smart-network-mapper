@@ -11,36 +11,78 @@ def get_service(port: int) -> str:
     except OSError:
         return "INCONNU"
 
-def grab_banner(ip: str, port: int, timeout=2) -> str:
+def grab_banner(ip: str, port: int, timeout=2.5) -> str:
+    """
+    Tente de récupérer la bannière du service en utilisant des sondes spécifiques.
+    """
+    # Dictionnaire des sondes par port (Probes)
+    PROBES = {
+        80:   b"HEAD / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n",
+        8080: b"HEAD / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n",
+        443:  b"HEAD / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n",
+        6379: b"INFO\r\n",                                # Redis
+        3306: b"\x07\x00\x00\x01\x00\x00\x00",           # MySQL Client Init
+        21:   b"HELP\r\n",                                # FTP
+        25:   b"EHLO scanner.local\r\n",                  # SMTP
+        110:  b"CAPA\r\n",                                # POP3
+        143:  b"A1 CAPABILITY\r\n",                       # IMAP
+    }
+
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)
             s.connect((ip, port))
             
-            # Probes spécifiques pour certains ports
-            if port in [80, 8080, 8443, 443]:
-                s.sendall(b"HEAD / HTTP/1.0\r\n\r\n")
+            # 1. On vérifie si le service parle de lui-même (SSH, FTP, etc.)
+            try:
+                banner = s.recv(1024).decode('utf-8', errors='ignore').strip()
+                if banner: return banner
+            except socket.timeout:
+                pass # Si le service attend qu'on parle, on continue vers les sondes
             
+            # 2. On envoie la sonde spécifique si elle existe
+            if port in PROBES:
+                s.sendall(PROBES[port])
+                banner = s.recv(1024).decode('utf-8', errors='ignore').strip()
+                return banner if banner else "Réponse vide"
+            
+            # 3. Sonde générique pour les autres ports
+            s.sendall(b"\r\n\r\n")
             banner = s.recv(1024).decode('utf-8', errors='ignore').strip()
             return banner if banner else "Réponse vide"
-    except socket.timeout:
-        return "ERREUR: Timeout"
-    except ConnectionRefusedError:
-        return "FERMÉ / pas de réponse"
+
     except Exception as e:
         return f"ERREUR: {type(e).__name__}"
 
 def extract_version(banner: str) -> str:
-    # Si le banner indique une erreur ou un port fermé
-    if "ERREUR" in banner or "FERMÉ" in banner or "Réponse vide" in banner:
+    """
+    Extrait intelligemment le nom du logiciel et sa version.
+    Ignore les versions de protocoles (HTTP/1.1) pour éviter de tromper l'IA.
+    """
+    if any(x in banner for x in ["ERREUR", "FERMÉ", "Réponse vide"]):
         return "Non détectée"
         
     try:
-        # Pattern simple pour extraire les versions (e.g., Apache/2.4.1)
-        pattern = r'([\w\-]+)[/ ]([\d]+\.[\d]+[\.\d]*)'
-        match = re.search(pattern, banner)
-        if match:
-            return f"{match.group(1)}/{match.group(2)}"
+        # 1. Cas particulier du WEB : on cherche la ligne "Server:"
+        if "HTTP/" in banner:
+            server_match = re.search(r"Server: ([\w\-_]+)[/ \-]([\d]+\.[\d]+[\.\d\w\-]*)", banner, re.IGNORECASE)
+            if server_match:
+                return f"{server_match.group(1)}/{server_match.group(2)}"
+
+        # 2. Pattern général
+        pattern = r'([\w\-_]+)[/ \-]([\d]+\.[\d]+[\.\d\w\-]*)'
+        matches = re.finditer(pattern, banner)
+        
+        for match in matches:
+            name = match.group(1)
+            ver = match.group(2)
+            
+            # On ignore les versions de protocole pur
+            if name.upper() in ["HTTP", "SSH", "TCP"]:
+                continue
+            
+            return f"{name}/{ver}"
+            
         return "Version inconnue"
     except Exception:
         return "Erreur d'analyse"

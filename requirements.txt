@@ -1,10 +1,10 @@
-icmplib
 scapy
+psutil
+pandas
+numpy
+joblib
 colorama
 tqdm
+customtkinter
 pytest
-#scapy est une bibliotheque qui permet de manipuler les paquets reseaux
-#icmplib est une bibliotheque qui permet de manipuler les paquets icmp
-#colorama est une bibliotheque qui permet de manipuler les couleurs dans le terminal
-#tqdm est une bibliotheque qui permet de manipuler les barres de progression
-#pytest est une bibliotheque qui permet de tester le code
+icmplib

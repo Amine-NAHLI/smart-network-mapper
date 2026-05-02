@@ -218,7 +218,14 @@ def save_json(target_ip, resultats, ml_predictions={}):
     with open(output_path, "w", encoding="utf-8") as f: #ouvrir le fichier scan_result.json en mode écriture
         json.dump(data, f, indent=4, ensure_ascii=False) #écrire les données dans le fichier scan_result.json
 
-    print(f"\n  {Fore.GREEN}[✔] Résultats sauvegardés dans '{output_path}'.{Style.RESET_ALL}")
+    # Génération du rapport HTML Premium
+    try:
+        from reporter.html_generator import generate_html_report
+        html_path = os.path.join("outputs", "report.html")
+        generate_html_report(data, html_path)
+        print(f"  {Fore.GREEN}[✔] Rapport visuel généré : '{html_path}'.{Style.RESET_ALL}")
+    except Exception:
+        pass
 
 
 from model.predictor import predict
@@ -262,12 +269,15 @@ def send_to_ml(resultats):
 
 
 def main():
-    print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
-    print(f"║                                                          ║")
-    print(f"║           SMART NETWORK MAPPER SCANNER                  ║")
-    print(f"║                   by Amine Nahli                        ║")
-    print(f"║                                                          ║")
-    print(f"╚══════════════════════════════════════════════════════════╝{Style.RESET_ALL}")
+    print(f"""{Fore.CYAN}
+    ███████╗███╗   ██╗███╗   ███╗
+    ██╔════╝████╗  ██║████╗ ████║
+    ███████╗██╔██╗ ██║██╔████╔██║
+    ╚════██║██║╚██╗██║██║╚██╔╝██║
+    ███████║██║ ╚████║██║ ╚═╝ ██║
+    ╚══════╝╚═╝  ╚═══╝╚═╝     ╚═╝
+    {Fore.WHITE}SMART NETWORK MAPPER - v1.1{Style.RESET_ALL}
+    """)
 
     print(f"\n{Fore.CYAN}┌──────────────────────────────────────────────────────────┐")
     print(f"│  ÉTAPE 1 — Découverte des hôtes sur le réseau           │")

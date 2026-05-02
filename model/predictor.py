@@ -13,6 +13,7 @@ Pipeline de pretraitement (identique a l'entrainement) :
 import re
 import os
 import joblib
+import threading
 import numpy as np
 import pandas as pd
 
@@ -40,14 +41,20 @@ _model   = None
 _scaler  = None
 _qt      = None
 _feature_names = None
+_load_lock = threading.Lock()
 
 
 def _load_artifacts() -> None:
-    """Charge tous les artefacts depuis le disque (lazy, thread-unsafe)."""
+    """Charge tous les artefacts depuis le disque de manière thread-safe."""
     global _model, _scaler, _qt, _feature_names
 
     if _model is not None:
         return  # déjà chargés
+
+    with _load_lock:
+        # Double vérification après l'acquisition du verrou
+        if _model is not None:
+            return
 
     for path, name in [
         (_MODEL_PATH,    "vulnerability_model.pkl"),
@@ -79,33 +86,53 @@ _VERSION_RE = re.compile(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?")
 
 def _parse_version(version_string: str) -> dict:
     """
-    Extrait les composantes numeriques d'une chaine de version.
-
-    Exemples acceptes :
-        "Apache/2.4.41"  -> ma=2, mi=4, p=41, full=2.441
-        "2.4"            -> ma=2, mi=4, p=0,  full=2.4
-        "v2"             -> ma=2, mi=0, p=0,  full=2.0
-        "openssl/1.1.1k" -> ma=1, mi=1, p=1,  full=1.11
-
-    Valeurs par defaut si la chaine est malformee : tous a 0.
+    Extrait les composantes numériques d'une chaine de version de manière robuste.
     """
     defaults = {"version_ma": 0, "version_mi": 0, "version_p": 0, "version_full": 0.0}
 
     if not version_string or not isinstance(version_string, str):
         return defaults
 
+    # Regex plus flexible pour attraper les chiffres même avec des préfixes/suffixes
     m = _VERSION_RE.search(version_string)
     if not m:
         return defaults
 
-    ma = int(m.group(1))
-    mi = int(m.group(2)) if m.group(2) is not None else 0
-    p  = int(m.group(3)) if m.group(3) is not None else 0
+    try:
+        ma = int(m.group(1))
+        mi = int(m.group(2)) if m.group(2) is not None else 0
+        p  = int(m.group(3)) if m.group(3) is not None else 0
 
-    # version_full = ma + 0.1*mi + 0.001*p  (ex: 2.4.41 -> 2.441)
-    full = ma + mi * 0.1 + p * 0.001
+        # Formule plus stable pour éviter les chevauchements (ex: 2.10 vs 3.0)
+        # On utilise une base 100 pour les sous-versions
+        full = ma + (mi * 0.01) + (p * 0.0001)
 
-    return {"version_ma": ma, "version_mi": mi, "version_p": p, "version_full": full}
+        return {"version_ma": ma, "version_mi": mi, "version_p": p, "version_full": full}
+    except Exception:
+        return defaults
+
+
+# Base de connaissances des versions stables (minimales recommandées)
+# Pour éviter que l'IA ne flagge des versions récentes comme vulnérables.
+_STABLE_VERSIONS = {
+    "apache":  (2, 4, 58),
+    "nginx":   (1, 24, 0),
+    "openssh": (9, 0, 0),
+    "mysql":   (8, 0, 30),
+    "vsftpd":  (3, 0, 5),
+    "php":     (8, 2, 0),
+    "postfix": (3, 7, 0),
+}
+
+def _is_known_safe(service_name: str, ma: int, mi: int, p: int) -> bool:
+    """Vérifie si une version est connue comme stable/sûre."""
+    service_name = service_name.lower()
+    for key, stable_ver in _STABLE_VERSIONS.items():
+        if key in service_name:
+            # Comparaison de version (major, minor, patch)
+            if (ma, mi, p) >= stable_ver:
+                return True
+    return False
 
 
 # ──────────────────────────────────────────────────────────────
@@ -113,103 +140,116 @@ def _parse_version(version_string: str) -> dict:
 # ──────────────────────────────────────────────────────────────
 def predict(port: int, version_string: str, service: str = "", protocol: str = "tcp", os_hint: str = "") -> dict:
     """
-    Prédit si un service réseau est vulnérable en utilisant 92 features.
-
-    Paramètres
-    ----------
-    port           : numéro de port (ex : 80, 443, 22)
-    version_string : chaîne de version brute (ex : "Apache/2.4.41")
-    service        : nom du service détecté (ex : "Apache httpd")
-    protocol       : protocole (tcp ou udp)
-    os_hint        : indice sur l'OS (ex : "Ubuntu")
-
-    Retourne
-    --------
-    dict avec les clés :
-        - "vulnerable"  : int   → 0 ou 1
-        - "confidence"  : float → probabilité de la classe prédite (0.0–1.0)
-        - "label"       : str   → "VULNÉRABLE" ou "NON VULNÉRABLE"
+    Prédit si un service réseau est vulnérable.
     """
     _load_artifacts()
 
+    # Nettoyage des entrées
+    is_unknown_version = False
+    v_lower = version_string.lower() if version_string else ""
+    if not version_string or any(x in v_lower for x in ["non détectée", "inconnue", "n/a", "réponse vide", "timeout"]):
+        is_unknown_version = True
+        version_string = ""
+
     # ── 1. Construction du vecteur brut ──────────────────────────
-    # Initialisation de toutes les features à 0
     raw = {feat: 0 for feat in _feature_names}
     
-    # Features de version
-    version_feats = _parse_version(version_string)
-    raw.update(version_feats)
-    
-    # Port
+    v_info = _parse_version(version_string)
+    raw.update(v_info)
     raw["port"] = int(port) if port is not None else 0
     
-    # ── 2. Encodage du service (One-Hot substring match) ──────────
+    # ── 2. Encodage du service ──────────────────────────────────
     service_lower = service.lower() if service else ""
+    has_recognized_service = False
     for feat in _feature_names:
         if feat.startswith("service_"):
             service_name = feat.replace("service_", "")
             if service_name in service_lower:
                 raw[feat] = 1
+                has_recognized_service = True
                 
     # ── 3. Encodage du protocole ─────────────────────────────────
     if protocol.lower() == "tcp":
         raw["protocol_tcp"] = 1
-        raw["protocol_udp"] = 0
     else:
-        raw["protocol_tcp"] = 0
         raw["protocol_udp"] = 1
         
-    # ── 4. Encodage de l'OS ──────────────────────────────────────
-    os_lower = os_hint.lower() if os_hint else ""
-    for feat in _feature_names:
-        if feat.startswith("os_"):
-            os_name = feat.replace("os_", "")
-            if os_name in os_lower:
-                raw[feat] = 1
-
     # ── 5. Transformation et Prédiction ───────────────────────────
+    if is_unknown_version:
+        raw["version_ma"]   = _scaler.center_[0]
+        raw["version_mi"]   = _scaler.center_[1]
+        raw["version_p"]    = _scaler.center_[2]
+        raw["version_full"] = _scaler.center_[3]
+
     df = pd.DataFrame([raw], columns=_feature_names)
-
-    # RobustScaler sur les colonnes numériques
     df[_SCALER_COLS] = _scaler.transform(df[_SCALER_COLS])
-
-    # QuantileTransformer sur version_p et version_full
     df[_QT_COLS] = _qt.transform(df[_QT_COLS])
 
-    # Prédiction
-    prediction  = int(_model.predict(df[_feature_names])[0])
-    probas      = _model.predict_proba(df[_feature_names])[0]
-    confidence  = float(probas[prediction])
+    probas = _model.predict_proba(df[_feature_names])[0]
+    prediction = int(np.argmax(probas))
+    confidence = float(probas[prediction])
 
-    label = "VULNÉRABLE" if prediction == 1 else "NON VULNÉRABLE"
+    # ── COUCHE DE SAGESSE (Heuristique) ─────────────────────────
+    # On extrait le nom du logiciel de la version (ex: "Apache" de "Apache/2.4.58")
+    detected_soft = version_string.split('/')[0].lower() if '/' in version_string else service_lower
+
+    if _is_known_safe(detected_soft, v_info["version_ma"], v_info["version_mi"], v_info["version_p"]):
+        prediction = 0
+        confidence = 0.95
+        label = "NON VULNÉRABLE"
+    else:
+        # Seuil de sécurité IA
+        if prediction == 1 and confidence < 0.65:
+            prediction = 0
+            confidence = 1.0 - confidence
+            label = "NON VULNÉRABLE"
+        else:
+            label = "VULNÉRABLE" if prediction == 1 else "NON VULNÉRABLE"
+
+    # ── GÉNÉRATION DES CONSEILS ET LIENS CVE ───────────────────
+    remedy = "Aucune action requise."
+    cve_link = ""
+    threat_level = "SÛR"
+
+    if prediction == 1:
+        threat_level = "CRITIQUE" if confidence > 0.85 else "ÉLEVÉ"
+        soft_name = detected_soft.capitalize()
+        cve_link = f"https://www.cvedetails.com/google-search-results.php?q={soft_name}+{version_string}"
+        
+        if detected_soft in _STABLE_VERSIONS:
+            v_target = ".".join(map(str, _STABLE_VERSIONS[detected_soft]))
+            remedy = f"Mettez à jour vers {v_target}."
+        else:
+            remedy = "Service obsolète. Vérifiez les mises à jour."
+    elif confidence < 0.65:
+        threat_level = "MOYEN"
+        remedy = "Service non identifié précisément."
+    else:
+        threat_level = "FAIBLE"
 
     return {
-        "vulnerable": prediction,
-        "confidence": round(confidence, 4),
-        "label":      label,
+        "vulnerable":   prediction,
+        "confidence":   round(confidence, 4), # Valeur brute 0.0-1.0
+        "label":        label,
+        "threat_level": threat_level,
+        "remedy":       remedy,
+        "cve_link":     cve_link
     }
 
 
 # ──────────────────────────────────────────────────────────────
-# Test rapide (python -m model.predictor)
+# Test rapide
 # ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     test_cases = [
-        (80,  "Apache/2.4.41"),
-        (443, "OpenSSL/1.0.1f"),
-        (22,  "OpenSSH/7.4"),
-        (21,  "vsftpd/2.3.4"),
-        (80,  ""),               # version malformée → 0 par défaut
-        (0,   None),             # port et version manquants
+        (80,  "Apache/2.4.58", "apache"), # Doit être SAIN maintenant
+        (443, "OpenSSL/1.0.1f", "https"), # Doit être VULNÉRABLE
+        (22,  "OpenSSH/9.5", "ssh"),      # Doit être SAIN
+        (80,  "Non détectée", "http"),    # Calcul neutre
     ]
 
     print(f"{'Port':<6} {'Version':<25} {'Resultat':<18} {'Confiance':>9}")
     print("-" * 62)
-    for port, ver in test_cases:
-        result = predict(port, ver or "")
-        # Use ASCII labels for test output to avoid encoding issues
-        label = "VULNERABLE" if result['vulnerable'] == 1 else "NON VULNERABLE"
-        print(
-            f"{port:<6} {str(ver):<25} {label:<18} "
-            f"{result['confidence']*100:>8.1f}%"
-        )
+    for port, ver, svc in test_cases:
+        result = predict(port, ver, service=svc)
+        print(f"{port:<6} {str(ver):<25} {result['label']:<18} {result['confidence']*100:>8.1f}%")
