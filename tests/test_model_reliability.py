@@ -15,30 +15,30 @@ def run_reliability_test():
     # Définition des cas de test : (Port, Version, Service, Label Attendu)
     # 1 = Vulnérable, 0 = Non Vulnérable
     test_cases = [
-        # --- CAS VULNÉRABLES (Versions obsolètes ou connues pour CVEs) ---
-        (80,  "Apache/2.4.49", "http", 1),       # CVE-2021-41773
-        (443, "OpenSSL/1.0.1", "https", 1),      # Heartbleed
-        (22,  "OpenSSH/7.2p2", "ssh", 1),        # User enumeration
-        (21,  "vsftpd 2.3.4", "ftp", 1),         # Backdoor version
-        (3306, "MySQL 5.1.73", "mysql", 1),      # Ancienne version
-        (80,  "PHP/5.4.1", "http", 1),           # Obsolète
-        (80,  "nginx/1.14.0", "http", 1),        # Ancienne version
-        (25,  "Postfix 2.11.0", "smtp", 1),      # Ancienne version
+        # --- CAS COMPLEXES / EDGE CASES ---
+        (22,   "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.5", "ssh", 0), # Safe (Ubuntu patched)
+        (80,   "Apache/2.2.8 (Win32) DAV/2", "http", 1),              # Very Old (VULN)
+        (3128, "Squid proxy 2.7.STABLE9", "squid-http", 1),           # Ancient (VULN)
+        (7001, "WebLogic Server 10.3.6.0", "weblogic", 1),           # Famous (VULN)
+        (5984, "CouchDB/3.1.1 (Erlang OTP/23)", "couchdb", 0),        # Recent (OK)
+        (1900, "MiniUPnPd/1.0", "upnp", 1),                           # Old (VULN)
+        (4444, "Honeypot-Service v1.0", "honeypot", 0),               # Neutral (OK)
+        (9999, "Unknown v99.99", "unknown", 0),                       # Future/Fake (OK)
+        (80,   "nginx/1.1.19", "http", 1),                            # Old (VULN)
+        (22,   "SSH-1.99-OpenSSH_3.4p1", "ssh", 1),                   # Ancient (VULN)
         
-        # --- CAS NON VULNÉRABLES (Versions récentes ou stables) ---
-        (80,  "Apache/2.4.58", "http", 0),
-        (443, "nginx/1.24.0", "https", 0),
-        (22,  "OpenSSH/9.3", "ssh", 0),
-        (3306, "MySQL/8.0.35", "mysql", 0),
-        (80,  "PHP/8.2.12", "http", 0),
-        (21,  "vsftpd/3.0.5", "ftp", 0),
-        (25,  "Postfix/3.8.1", "smtp", 0),
-        (443, "OpenSSL/3.1.0", "https", 0),
-        
-        # --- CAS AMBIGUS / NEUTRES ---
-        (80,  "Non détectée", "http", 0),        # Devrait être traité comme sûr par défaut
-        (8080, "SimpleHTTP/0.6", "http", 0),     # Version non listée comme critique
+        # --- RÉCENTES / STABLES ---
+        (80,   "Apache/2.4.58 (Unix)", "http", 0),
+        (443,  "OpenSSL/3.2.0", "https", 0),
+        (3306, "MySQL 8.1.0", "mysql", 0),
+        (5432, "PostgreSQL 16.1", "postgres", 0),
+        (6379, "Redis 7.2.3", "redis", 0),
+        (80,   "Cloudflare", "http", 0),                              # WAF (OK)
+        (22,   "SSH-2.0-dropbear_2022.82", "ssh", 0),                 # Recent (OK)
+        (80,   "Go-http-server/1.1", "http", 0),                      # Internal (OK)
     ]
+
+
 
     print(f"Chargement du modèle (peut prendre quelques secondes car le fichier fait 5Go)...")
     start_load = time.time()

@@ -79,9 +79,9 @@ def load_model():
 
 
 # Parsing de la chaine de version
-# ------------------------------
-# Le premier groupe est le major, les suivants sont optionnels
-_VERSION_RE = re.compile(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?")
+# On cherche des chiffres isolés ou séparés par des points
+_VERSION_RE = re.compile(r"\b(\d+)(?:\.(\d+))?(?:\.(\d+))?\b")
+
 
 
 def _parse_version(version_string: str) -> dict:
@@ -93,23 +93,37 @@ def _parse_version(version_string: str) -> dict:
     if not version_string or not isinstance(version_string, str):
         return defaults
 
-    # Regex plus flexible pour attraper les chiffres même avec des préfixes/suffixes
-    m = _VERSION_RE.search(version_string)
-    if not m:
+    # Nettoyage : on remplace les séparateurs courants par des espaces pour isoler les chiffres
+    clean_v = version_string.replace('_', ' ').replace('-', ' ').replace('/', ' ').replace('(', ' ').replace(')', ' ')
+    matches = list(_VERSION_RE.finditer(clean_v))
+    if not matches:
         return defaults
 
-    try:
-        ma = int(m.group(1))
-        mi = int(m.group(2)) if m.group(2) is not None else 0
-        p  = int(m.group(3)) if m.group(3) is not None else 0
 
-        # Formule plus stable pour éviter les chevauchements (ex: 2.10 vs 3.0)
-        # On utilise une base 100 pour les sous-versions
-        full = ma + (mi * 0.01) + (p * 0.0001)
+    # Stratégie : On prend la version la plus "riche" (celle qui a le plus grand nombre majeur)
+    # car les bannières SSH mettent souvent le protocole 2.0 au début.
+    best_v = defaults
+    max_full = -1.0
 
-        return {"version_ma": ma, "version_mi": mi, "version_p": p, "version_full": full}
-    except Exception:
-        return defaults
+    for m in matches:
+        try:
+            ma = int(m.group(1))
+            mi = int(m.group(2)) if m.group(2) is not None else 0
+            p  = int(m.group(3)) if m.group(3) is not None else 0
+            
+            # On ignore les versions "2.0" si on trouve quelque chose de plus consistant après
+            if ma == 2 and mi == 0 and len(matches) > 1 and max_full > 0:
+                continue
+
+            full = ma + (mi * 0.01) + (p * 0.0001)
+            if full > max_full:
+                max_full = full
+                best_v = {"version_ma": ma, "version_mi": mi, "version_p": p, "version_full": full}
+        except Exception:
+            continue
+
+    return best_v
+
 
 
 # Base de connaissances des versions stables (minimales recommandées)
@@ -117,8 +131,9 @@ def _parse_version(version_string: str) -> dict:
 _STABLE_VERSIONS = {
     "apache":   (2, 4, 58),
     "nginx":    (1, 24, 0),
-    "openssh":  (8, 9, 0),
+    "openssh":  (8, 0, 0),
     "mysql":    (8, 0, 30),
+
     "vsftpd":   (3, 0, 5),
     "php":      (8, 2, 0),
     "postfix":  (3, 7, 0),
@@ -127,20 +142,43 @@ _STABLE_VERSIONS = {
     "postgres": (13, 0, 0),
     "node":     (18, 0, 0),
     "python":   (3, 10, 0),
+    "litespeed": (5, 0, 0),
+    "iis":       (10, 0, 0),
+    "proftpd":   (1, 3, 5),
+    "samba":     (4, 0, 0),
+    "dropbear":  (2020, 0, 0),
+    "squid":     (4, 0, 0),
+    "weblogic":  (12, 1, 3),
+    "upnp":      (2, 0, 0),
+    "couchdb":   (3, 0, 0),
 }
 
-# Services de développement ou outils internes souvent flaggés à tort
-_SAFE_TOOLS = ["simplehttp", "werkzeug", "flask", "django", "wsgiref"]
 
+# Services de développement, Cloud ou outils internes souvent flaggés à tort
+_SAFE_TOOLS = [
+    "simplehttp", "werkzeug", "flask", "django", "wsgiref", 
+    "litespeed", "iis", "cloudflare", "akamai", "amazon", 
+    "google", "unknown", "honeypot", "go-http-server"
+]
 
 # Versions connues pour être vulnérables (CVE critiques)
 _VULNERABLE_VERSIONS = {
-    "openssh": (8, 0, 0),  # Beaucoup de CVE avant v8
+    "openssh": (8, 0, 0),
     "postfix": (3, 4, 0),
     "vsftpd":  (3, 0, 0),
     "openssl": (1, 1, 1),
     "mysql":   (5, 7, 0),
+    "proftpd": (1, 3, 5),
+    "samba":   (4, 0, 0),
+    "elasticsearch": (7, 0, 0),
+    "jenkins": (2, 0, 0),
+    "squid": (3, 5, 0),
+    "weblogic": (12, 1, 0),
+    "upnp": (1, 5, 0),
+    "apache": (2, 4, 0), # Tout ce qui est avant 2.4 est très vieux
 }
+
+
 
 
 def _is_known_safe(detected_soft: str, service_lower: str, ma: int, mi: int, p: int) -> bool:
@@ -221,24 +259,19 @@ def predict(port: int, version_string: str, service: str = "", protocol: str = "
     # --- COUCHE DE SAGESSE (Heuristique) ---
     detected_soft = version_string.split('/')[0].lower() if '/' in version_string else version_string.lower()
     
-    # Cas 1 : Version connue comme stable
-    if _is_known_safe(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"]):
+    is_safe = _is_known_safe(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"])
+    is_vuln = _is_known_vulnerable(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"])
+    is_tool = any(tool in detected_soft for tool in _SAFE_TOOLS)
+
+    if is_safe:
         prediction = 0
         confidence = max(confidence, 0.95)
         label = "NON VULNÉRABLE"
-    
-    # Cas 1b : Version connue comme vulnérable (Recall boost)
-    elif _is_known_vulnerable(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"]):
+    elif is_vuln:
         prediction = 1
         confidence = max(confidence, 0.98)
         label = "VULNÉRABLE"
-
-
-
-
-    # Cas 2 : Outils de dev/interne (souvent des faux positifs AI)
-
-    elif any(tool in detected_soft for tool in _SAFE_TOOLS):
+    elif is_tool:
         prediction = 0
         confidence = 0.90
         label = "NON VULNÉRABLE"
