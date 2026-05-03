@@ -115,24 +115,53 @@ def _parse_version(version_string: str) -> dict:
 # Base de connaissances des versions stables (minimales recommandées)
 # Pour éviter que l'IA ne flagge des versions récentes comme vulnérables.
 _STABLE_VERSIONS = {
-    "apache":  (2, 4, 58),
-    "nginx":   (1, 24, 0),
-    "openssh": (9, 0, 0),
-    "mysql":   (8, 0, 30),
-    "vsftpd":  (3, 0, 5),
-    "php":     (8, 2, 0),
-    "postfix": (3, 7, 0),
+    "apache":   (2, 4, 58),
+    "nginx":    (1, 24, 0),
+    "openssh":  (8, 9, 0),
+    "mysql":    (8, 0, 30),
+    "vsftpd":   (3, 0, 5),
+    "php":      (8, 2, 0),
+    "postfix":  (3, 7, 0),
+    "openssl":  (3, 0, 0),
+    "redis":    (6, 0, 0),
+    "postgres": (13, 0, 0),
+    "node":     (18, 0, 0),
+    "python":   (3, 10, 0),
 }
 
-def _is_known_safe(service_name: str, ma: int, mi: int, p: int) -> bool:
+# Services de développement ou outils internes souvent flaggés à tort
+_SAFE_TOOLS = ["simplehttp", "werkzeug", "flask", "django", "wsgiref"]
+
+
+# Versions connues pour être vulnérables (CVE critiques)
+_VULNERABLE_VERSIONS = {
+    "openssh": (8, 0, 0),  # Beaucoup de CVE avant v8
+    "postfix": (3, 4, 0),
+    "vsftpd":  (3, 0, 0),
+    "openssl": (1, 1, 1),
+    "mysql":   (5, 7, 0),
+}
+
+
+def _is_known_safe(detected_soft: str, service_lower: str, ma: int, mi: int, p: int) -> bool:
     """Vérifie si une version est connue comme stable/sûre."""
-    service_name = service_name.lower()
+    search_area = f"{detected_soft} {service_lower}".lower()
     for key, stable_ver in _STABLE_VERSIONS.items():
-        if key in service_name:
-            # Comparaison de version (major, minor, patch)
+        if key in search_area:
             if (ma, mi, p) >= stable_ver:
                 return True
     return False
+
+def _is_known_vulnerable(detected_soft: str, service_lower: str, ma: int, mi: int, p: int) -> bool:
+    """Vérifie si une version est connue comme obsolète/vulnérable."""
+    search_area = f"{detected_soft} {service_lower}".lower()
+    for key, vuln_ver in _VULNERABLE_VERSIONS.items():
+        if key in search_area:
+            if (ma, mi, p) < vuln_ver:
+                return True
+    return False
+
+
 
 
 # ──────────────────────────────────────────────────────────────
@@ -189,22 +218,48 @@ def predict(port: int, version_string: str, service: str = "", protocol: str = "
     prediction = int(np.argmax(probas))
     confidence = float(probas[prediction])
 
-    # ── COUCHE DE SAGESSE (Heuristique) ─────────────────────────
-    # On extrait le nom du logiciel de la version (ex: "Apache" de "Apache/2.4.58")
-    detected_soft = version_string.split('/')[0].lower() if '/' in version_string else service_lower
-
-    if _is_known_safe(detected_soft, v_info["version_ma"], v_info["version_mi"], v_info["version_p"]):
+    # --- COUCHE DE SAGESSE (Heuristique) ---
+    detected_soft = version_string.split('/')[0].lower() if '/' in version_string else version_string.lower()
+    
+    # Cas 1 : Version connue comme stable
+    if _is_known_safe(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"]):
         prediction = 0
-        confidence = 0.95
+        confidence = max(confidence, 0.95)
         label = "NON VULNÉRABLE"
+    
+    # Cas 1b : Version connue comme vulnérable (Recall boost)
+    elif _is_known_vulnerable(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"]):
+        prediction = 1
+        confidence = max(confidence, 0.98)
+        label = "VULNÉRABLE"
+
+
+
+
+    # Cas 2 : Outils de dev/interne (souvent des faux positifs AI)
+
+    elif any(tool in detected_soft for tool in _SAFE_TOOLS):
+        prediction = 0
+        confidence = 0.90
+        label = "NON VULNÉRABLE"
+
+    # Cas 3 : Forçage de vulnérabilité pour des versions extrêmement vieilles (< 2015)
+    elif v_info["version_ma"] > 0 and v_info["version_ma"] < 2 and "ssh" in detected_soft:
+        # Exemple: SSH 1.x est toujours vulnérable
+        prediction = 1
+        confidence = 1.0
+        label = "VULNÉRABLE"
+
     else:
-        # Seuil de sécurité IA
-        if prediction == 1 and confidence < 0.65:
+        # Seuil de sécurité IA dynamique
+        # Si l'IA est hésitante (< 70%), on privilégie la prudence (Non Vulnérable)
+        if prediction == 1 and confidence < 0.70:
             prediction = 0
             confidence = 1.0 - confidence
             label = "NON VULNÉRABLE"
         else:
             label = "VULNÉRABLE" if prediction == 1 else "NON VULNÉRABLE"
+
 
     # ── GÉNÉRATION DES CONSEILS ET LIENS CVE ───────────────────
     remedy = "Aucune action requise."
