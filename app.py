@@ -84,6 +84,7 @@ class SmartNetworkMapper(ctk.CTk):
 
         # Tkinter vars
         self.cidr_var         = ctk.StringVar(value="")
+        self.target_ip_var    = ctk.StringVar(value="")
         self.scan_mode_var    = ctk.StringVar(value="FAST")
         self.custom_ports_var = ctk.StringVar(value="")
 
@@ -326,11 +327,50 @@ class SmartNetworkMapper(ctk.CTk):
         self._scan_scroll = ctk.CTkScrollableFrame(outer, fg_color=BG_MAIN)
         self._scan_scroll.pack(fill="both", expand=True)
 
+        self._build_direct_scan(self._scan_scroll)
         self._build_step1(self._scan_scroll)
         self._build_step2(self._scan_scroll)
         self._build_step3(self._scan_scroll)
 
         return outer
+
+    # ── Direct Scan — Single IP / External ──────────────────────
+
+    def _build_direct_scan(self, parent):
+        box = ctk.CTkFrame(parent, fg_color=BG_SIDE, border_color=BORDER,
+                            border_width=1, corner_radius=8)
+        box.pack(fill="x", padx=24, pady=(0, 10))
+
+        ctk.CTkLabel(box, text="◈ QUICK SCAN — SINGLE TARGET (INTERNAL OR EXTERNAL)",
+                     font=("Segoe UI", 11, "bold"), text_color=CYAN).pack(anchor="w", padx=16, pady=(12, 8))
+
+        row = ctk.CTkFrame(box, fg_color="transparent")
+        row.pack(fill="x", padx=16, pady=(0, 12))
+
+        ctk.CTkLabel(row, text="TARGET IP:", font=("Courier New", 11),
+                     text_color=GRAY).pack(side="left", padx=(0, 8))
+        ctk.CTkEntry(row, width=250, placeholder_text="e.g. 8.8.8.8 or 192.168.1.1",
+                     textvariable=self.target_ip_var,
+                     fg_color=BG_MAIN, border_color=BORDER,
+                     font=("Courier New", 11)).pack(side="left", padx=(0, 8))
+        
+        ctk.CTkButton(row, text="[ SELECT TARGET ]", font=("Courier New", 11, "bold"),
+                      fg_color=CYAN, text_color=BG_MAIN, hover_color="#00d4db",
+                      command=self._select_direct_target).pack(side="left")
+
+    def _select_direct_target(self):
+        ip = self.target_ip_var.get().strip()
+        if not ip:
+            messagebox.showwarning("Missing Input", "Enter a target IP address first.")
+            return
+        
+        # Simple IP validation (basic)
+        parts = ip.split(".")
+        if len(parts) != 4:
+             # Could be a hostname too, socket.gethostbyname handles it but let's be careful
+             pass
+
+        self._select_host(ip)
 
     # ── Step 1 — Network Configuration ──────────────────────────
 
