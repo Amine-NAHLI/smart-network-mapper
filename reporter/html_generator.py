@@ -117,6 +117,24 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                 <div class="stat-card"><span class="stat-val" style="color: var(--green)">{open_p - vuln_p}</span><span class="stat-label">Sécurisés</span></div>
             </div>
 
+            <!-- SVG Chart Section -->
+            <div style="display: flex; justify-content: center; margin-bottom: 40px;">
+                <svg width="200" height="200" viewBox="0 0 42 42" class="donut">
+                    <circle class="donut-hole" cx="21" cy="21" r="15.91549430918954" fill="transparent"></circle>
+                    <circle class="donut-ring" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#1f2937" stroke-width="3"></circle>
+                    <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="var(--green)" stroke-width="3" stroke-dasharray="{((open_p-vuln_p)/max(1,open_p))*100 if open_p > 0 else 0} {100 - (((open_p-vuln_p)/max(1,open_p))*100 if open_p > 0 else 0)}" stroke-dashoffset="25"></circle>
+                    <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="var(--red)" stroke-width="3" stroke-dasharray="{(vuln_p/max(1,open_p))*100 if open_p > 0 else 0} {100 - ((vuln_p/max(1,open_p))*100 if open_p > 0 else 0)}" stroke-dashoffset="{125 - (((open_p-vuln_p)/max(1,open_p))*100 if open_p > 0 else 0)}"></circle>
+                    <g class="chart-text">
+                        <text x="50%" y="50%" class="chart-number" style="fill: white; font-size: 6px; font-weight: bold; text-anchor: middle; dominant-baseline: central;">
+                            {int(((open_p-vuln_p)/max(1,open_p))*100) if open_p > 0 else 0}%
+                        </text>
+                        <text x="50%" y="50%" class="chart-label" style="fill: var(--gray); font-size: 2px; text-anchor: middle; transform: translateY(4px);">
+                            SAFE
+                        </text>
+                    </g>
+                </svg>
+            </div>
+
             <table>
                 <thead>
                     <tr>
