@@ -31,6 +31,7 @@
 [AI Engine](#-ai-engine) •
 [License](#-license)
 
+
 <br/>
 
 ![GUI Preview](assets/gui_preview.png)
@@ -162,11 +163,20 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**4️⃣ Vérifier l'installation**
+**4️⃣ Télécharger les modèles IA**
+
+Les modèles volumineux sont hébergés sur Hugging Face. Lancez le script pour les récupérer :
 
 ```bash
-python -c "import scapy, customtkinter, sklearn; print('✅ All systems ready!')"
+python download_models.py
 ```
+
+**5️⃣ Vérifier l'installation**
+
+```bash
+python -c "import scapy, customtkinter, sklearn, huggingface_hub; print('✅ All systems ready!')"
+```
+
 
 > ⚠️ **Note Windows** : Si vous obtenez une erreur Scapy, installez [Npcap](https://npcap.com/#download) en cochant _"Install Npcap in WinPcap API-compatible Mode"_.
 
@@ -288,7 +298,8 @@ Le module `model/` embarque un **pipeline complet de Machine Learning** pour la 
 
 Le modèle a été entraîné sur `dataset_model_normalized.csv`, un dataset contenant des **signatures de services** et leurs **ports associés à des vulnérabilités CVE connues**. Le script d'entraînement `model/code_training.py` est inclus pour réentraîner ou affiner le modèle.
 
-> ⚠️ **Note importante** : Les fichiers `.pkl` (notamment `vulnerability_model.pkl` ~5 GB) ne sont **pas inclus** dans le dépôt Git. Voir la section _Setup_ pour les instructions de téléchargement.
+> 💡 **Tip** : Utilisez le script `download_models.py` pour récupérer automatiquement la dernière version des modèles depuis notre dépôt Hugging Face.
+
 
 ---
 
@@ -305,7 +316,9 @@ Le modèle a été entraîné sur `dataset_model_normalized.csv`, un dataset con
 | 🔢 **numpy**         | Calculs numériques                   |
 | 💾 **joblib**        | Chargement des modèles `.pkl`        |
 | 🧠 **scikit-learn**  | Random Forest Classifier             |
+| 🤗 **huggingface_hub**| Téléchargement des modèles IA        |
 | 🧪 **pytest**        | Framework de tests                   |
+
 
 ---
 

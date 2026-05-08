@@ -13,6 +13,7 @@ pandas
 numpy
 joblib
 scikit-learn
+huggingface_hub
 
 # Testing
 pytest
