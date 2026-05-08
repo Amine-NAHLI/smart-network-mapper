@@ -1,181 +1,422 @@
+<div align="center">
+
 # 🛰️ Smart Network Mapper
 
-Bienvenue dans le projet **Smart Network Mapper** ! Cet outil est un scanner réseau complet conçu pour être à la fois **puissant** pour les initiés et **pédagogique** pour les débutants.
+### _Next-Generation Network Diagnostic & AI-Powered Security Suite_
 
-Il permet d'explorer votre réseau local (LAN) ou des serveurs distants pour découvrir quels appareils sont actifs et quels services ils hébergent.
+<p>
+  <img src="https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/License-MIT-FFD700?style=for-the-badge" alt="License"/>
+  <img src="https://img.shields.io/badge/AI-Random_Forest-FF00FF?style=for-the-badge&logo=scikitlearn&logoColor=white" alt="AI"/>
+  <img src="https://img.shields.io/badge/Status-Beta-00FF00?style=for-the-badge" alt="Status"/>
+</p>
 
----
+<p>
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20MacOS-lightgrey?style=flat-square" alt="Platform"/>
+  <img src="https://img.shields.io/badge/GUI-CustomTkinter-1f6feb?style=flat-square" alt="GUI"/>
+  <img src="https://img.shields.io/badge/Multi--Threaded-200_Workers-success?style=flat-square" alt="Threading"/>
+  <img src="https://img.shields.io/badge/Engine-Scapy_%2B_Socket-orange?style=flat-square" alt="Engine"/>
+</p>
 
-## 📌 Présentation du projet
+<br/>
 
-- **Nom du projet** : Smart Network Mapper
-- **Objectif principal** : Cartographier un réseau informatique en identifiant les machines connectées et leurs "portes d'entrée" (les ports).
-- **Problème résolu** : Savoir exactement ce qui tourne sur son réseau, détecter des appareils inconnus ou vérifier la sécurité de ses propres services.
-- **À qui il est destiné** : Étudiants en informatique, curieux de la cybersécurité, ou administrateurs réseau cherchant un outil simple et transparent.
+**A premium cyberpunk-styled network scanner combining industrial-grade analysis with an immersive user interface.**
 
----
+<br/>
 
-## ⚙️ Fonctionnalités
+[Features](#-key-features) •
+[Installation](#%EF%B8%8F-installation) •
+[Usage](#-usage) •
+[Architecture](#%EF%B8%8F-project-architecture) •
+[AI Engine](#-ai-engine) •
+[License](#-license)
 
-✅ **Détection automatique du réseau** : Identifie votre carte Wi-Fi ou Ethernet et calcule votre plage d'adresses IP.  
-✅ **Scan d'hôtes (Host Discovery)** : Trouve toutes les machines allumées sur votre réseau local.  
-✅ **Scan de ports multi-threadé** : Analyse des milliers de ports en quelques secondes grâce à l'exécution en parallèle.  
-✅ **Identification de services** : Reconnaît automatiquement les services courants (HTTP, SSH, FTP, etc.).  
-✅ **Banner Grabbing & Versioning** : Tente de lire la "signature" du service pour deviner sa version exacte.  
-✅ **Machine Learning (Predictive)** : Analyse de vulnérabilités potentielles basée sur un modèle Random Forest entraîné.  
-✅ **Support IP Publique** : Permet aussi de scanner des serveurs sur Internet (avec validation de sécurité).  
-✅ **Export JSON** : Sauvegarde automatiquement les résultats pour une analyse ultérieure.
+<br/>
 
----
+![GUI Preview](assets/gui_preview.png)
 
-## 🧠 Comment ça marche ?
-
-Le programme suit un flux logique rigoureux pour garantir rapidité et précision.
-
-### Flux du programme étape par étape :
-
-1.  **Initialisation** : Le programme détecte votre configuration réseau actuelle (IP locale, masque).
-2.  **Découverte** : Il envoie des requêtes légères (TCP Ping) à toutes les IP possibles du réseau pour voir qui répond.
-3.  **Collecte d'infos** : Pour chaque machine trouvée, il récupère son nom d'hôte (DNS) et son adresse MAC (ARP).
-4.  **Ciblage** : L'utilisateur choisit une machine spécifique à analyser plus en profondeur.
-5.  **Scan de ports** : Le programme tente d'ouvrir une connexion sur chaque port demandé.
-6.  **Inspection** : Si un port est ouvert, il télécharge la "bannière" (le message d'accueil du service) pour identifier le logiciel utilisé.
-7.  **Analyse IA** : (Optionnel) Le module `model` analyse les versions détectées pour prédire les vulnérabilités.
-8.  **Rapport** : Il affiche un tableau récapitulatif coloré et génère un fichier JSON.
+</div>
 
 ---
 
-## 🗂️ Structure du projet
+## 🌟 Why Smart Network Mapper?
 
-L'organisation des fichiers respecte les bonnes pratiques de modularité en Python :
+> _"Pas un simple scanner. Une suite de diagnostic réseau complète, alimentée par l'intelligence artificielle."_
 
-- 📄 `main.py` : Le **cerveau** du projet. Il gère l'interface utilisateur, les menus et coordonne les différents modules de scan.
-- 📁 `scanner/` : Le dossier contenant toute la **logique technique**.
-  - `host_discovery.py` : Contient les fonctions pour trouver les machines sur le réseau (Ping).
-  - `port_scanner.py` : Gère le scan des ports TCP, la lecture des bannières et la détection de version.
-  - `device_info.py` : Utilise des protocoles comme ARP pour obtenir les adresses MAC et le DNS inversé pour les noms.
-  - `utils.py` : Fonctions utilitaires pour valider les adresses IP et manipuler les réseaux CIDR.
-- 📁 `model/` : Le moteur d'**Intelligence Artificielle**.
-  - `code_training.py` : Script d'entraînement du modèle Random Forest.
-  - `normalize_data.py` : Préparation et normalisation des datasets.
-  - `*.pkl` : Fichiers de modèles et scalers sauvegardés.
-- 📁 `reporter/` : Module dédié à la génération de **rapports détaillés** (PDF/HTML).
-- 📁 `outputs/` : Dossier où sont stockés les rapports de scan (ex: `scan_result.json`).
-- 📁 `tests/` : Suite de **tests unitaires** pour garantir la fiabilité du scanner.
-- 📄 `requirements.txt` : Liste des bibliothèques externes nécessaires.
+**Smart Network Mapper (SNM)** combine la **puissance d'analyse** des outils professionnels de cybersécurité avec une **expérience utilisateur moderne** et une **intelligence prédictive** capable d'évaluer en temps réel le niveau de menace de chaque service détecté sur votre réseau.
+
+<table>
+<tr>
+<td width="50%">
+
+### 🎯 Pour qui ?
+
+- 🔐 **Pentesters** & auditeurs de sécurité
+- 👨‍💻 **Administrateurs** réseau
+- 🎓 **Étudiants** en cybersécurité
+- 🛡️ **Professionnels IT** soucieux de leur infrastructure
+
+</td>
+<td width="50%">
+
+### ⚡ Pourquoi ?
+
+- 🚀 Scan **multi-threadé** (200 workers)
+- 🧠 IA prédictive **embarquée**
+- 🎨 Interface **cyberpunk premium**
+- 📊 Rapports **HTML & JSON** professionnels
+
+</td>
+</tr>
+</table>
 
 ---
 
-## 🔍 Explication du code
+## ✨ Key Features
 
-### 1. Les bibliothèques clés utilisées
+### 🔍 Discovery & Mapping
 
-- **`scapy`** : Une bibliothèque ultra-puissante pour manipuler les paquets réseau (utilisée ici pour les requêtes ARP).
-- **`socket`** : Le module standard de Python pour les communications réseau de bas niveau.
-- **`concurrent.futures`** : Permet de lancer plusieurs scans en même temps (Multi-threading) pour aller 100x plus vite.
-- **`colorama`** : Ajoute des couleurs dans le terminal pour rendre le texte lisible.
-- **`tqdm`** : Affiche de jolies barres de progression pendant les scans longs.
+| Feature                      | Description                                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------------- |
+| 🌐 **Auto LAN Detection**    | Identification automatique de votre configuration réseau (Wi-Fi/Ethernet) via `psutil` |
+| 📡 **Hybrid Host Discovery** | Combine **TCP Ping** (Socket) et **ARP Requests** (Scapy) pour une détection maximale  |
+| 🖥️ **OS Fingerprinting**     | Estimation du système d'exploitation par analyse TTL                                   |
+| 🏷️ **Device Information**    | Récupération MAC, hostname et métadonnées de chaque appareil                           |
 
-### 2. Zoom sur une fonction : `scan_tcp`
+### 🛡️ Security Analysis
 
-Cette fonction est le cœur du scanner de ports. Voici son principe :
+| Feature                           | Description                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------- |
+| ⚡ **Multi-Mode Scanning**        | Modes **Rapide** (22 ports critiques), **Complet** (1-65535) ou **Personnalisé** |
+| 🎯 **Banner Grabbing**            | Sondes spécialisées pour **HTTP, SSH, FTP, MySQL, Redis** et plus                |
+| 🔬 **Service Versioning**         | Extraction précise des signatures de services                                    |
+| 🧠 **AI Vulnerability Predictor** | Évaluation automatique du risque via **Random Forest**                           |
 
-```python
-# Extrait simplifié de scanner/port_scanner.py
-def scan_tcp(ip, port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(1.5)
-        result = s.connect_ex((ip, port))
-        if result == 0:
-            return "OUVERT"
-        return "FERMÉ"
+### 📊 Reporting & Export
+
+| Feature                    | Description                                                |
+| -------------------------- | ---------------------------------------------------------- |
+| 🎨 **Premium HTML Report** | Design responsive avec graphiques SVG cyberpunk            |
+| 📦 **JSON Export**         | Données structurées prêtes pour intégration                |
+| 📈 **Real-Time Dashboard** | Visualisation live du score de sécurité et ports critiques |
+
+---
+
+## 🛠️ Installation
+
+### 📋 Prerequisites
+
+<table>
+<tr>
+<td>
+
+**🐍 Python**
+
+- Version **3.8+** requise
+- pip à jour recommandé
+
+</td>
+<td>
+
+**🔐 Privileges**
+
+- **Admin/Root** requis pour ARP scan
+- Mode utilisateur : fonctions limitées
+
+</td>
+<td>
+
+**📡 Network Library**
+
+- **Windows** : [Npcap](https://npcap.com/) requis
+- **Linux/Mac** : libpcap natif
+
+</td>
+</tr>
+</table>
+
+### 🚀 Quick Setup
+
+**1️⃣ Cloner le dépôt**
+
+```bash
+git clone https://github.com/Amine-NAHLI/smart-network-mapper.git
+cd smart-network-mapper
 ```
 
-- `socket.AF_INET` : On communique via IPv4.
-- `socket.SOCK_STREAM` : On utilise le protocole TCP (fiable).
-- `connect_ex` : Tente la connexion. S'il renvoie `0`, la porte est ouverte !
+**2️⃣ Créer un environnement virtuel** _(recommandé)_
+
+```bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# Linux / macOS
+python3 -m venv venv
+source venv/bin/activate
+```
+
+**3️⃣ Installer les dépendances**
+
+```bash
+pip install -r requirements.txt
+```
+
+**4️⃣ Vérifier l'installation**
+
+```bash
+python -c "import scapy, customtkinter, sklearn; print('✅ All systems ready!')"
+```
+
+> ⚠️ **Note Windows** : Si vous obtenez une erreur Scapy, installez [Npcap](https://npcap.com/#download) en cochant _"Install Npcap in WinPcap API-compatible Mode"_.
 
 ---
 
-## 💻 Installation et exécution
+## 🚀 Usage
 
-### Prérequis
+### 🎨 Mode Graphique (GUI) — _Recommandé_
 
-- **Python 3.8+** installé sur votre système.
-- Droits administrateur (requis pour certaines fonctions réseau comme ARP/Scapy).
+L'interface complète avec dashboard temps réel et visualisations cyberpunk :
 
-### Installation
+```bash
+python app.py
+```
 
-1. Clonez ou téléchargez le projet.
-2. Ouvrez un terminal dans le dossier du projet.
-3. Installez les dépendances :
-   ```bash
-   pip install -r requirements.txt
-   ```
+> 💡 **Lancer en admin** pour débloquer toutes les fonctionnalités ARP/Scapy :
+>
+> - **Windows** : Clic droit sur le terminal → _Exécuter en tant qu'administrateur_
+> - **Linux/Mac** : `sudo python app.py`
 
-### Lancement
+### ⚡ Mode Terminal (CLI)
 
-Pour démarrer le programme, lancez simplement :
+Idéal pour serveurs ou exécutions rapides en ligne de commande :
 
 ```bash
 python main.py
 ```
 
-### Exécution des tests
+L'interface CLI est **100% interactive** avec menus colorés (Colorama) et barre de progression (tqdm).
 
-Pour vérifier que tout fonctionne correctement, vous pouvez lancer la suite de tests avec `pytest` :
+### 📖 Workflow Typique
 
-```bash
-pytest tests/
+```mermaid
+graph LR
+    A[🔍 Auto-Detect LAN] --> B[📡 Discover Hosts]
+    B --> C[🎯 Select Target IP]
+    C --> D[⚡ Launch Port Scan]
+    D --> E[🧠 AI Analysis]
+    E --> F[📊 View Report]
+    F --> G[💾 Export HTML/JSON]
+```
+
+**Exemple en GUI :**
+
+1. Cliquez sur **"Auto Detect"** → identifie votre subnet (ex: `192.168.1.0/24`)
+2. Cliquez sur **"Discover Hosts"** → liste les appareils actifs
+3. Sélectionnez une **IP cible** dans la liste
+4. Cliquez sur **"Launch Scan"** → analyse complète avec IA
+5. Consultez l'onglet **"RESULTS"** ou ouvrez le rapport HTML généré
+
+---
+
+## 🏗️ Project Architecture
+
+```
+smart-network-mapper/
+│
+├── 📄 app.py                      # 🎨 GUI Entry Point (CustomTkinter)
+├── 📄 main.py                     # ⚡ CLI Entry Point (Interactive)
+├── 📄 requirements.txt            # 📦 Python Dependencies
+├── 📄 LICENSE                     # 📜 MIT License
+│
+├── 📁 scanner/                    # 🔬 Core Scanning Engine
+│   ├── host_discovery.py          # ├─ Hybrid TCP/ARP host detection
+│   ├── port_scanner.py            # ├─ Multi-threaded port scanning
+│   ├── device_info.py             # ├─ MAC, hostname, OS fingerprinting
+│   └── utils.py                   # └─ LAN auto-detection utilities
+│
+├── 📁 model/                      # 🧠 AI Vulnerability Engine
+│   ├── predictor.py               # ├─ Inference logic (Random Forest)
+│   ├── code_training.py           # ├─ Model training script
+│   ├── vulnerability_model.pkl    # ├─ Main RF classifier (5.1 GB)
+│   ├── quantile_transformer.pkl   # ├─ Version normalization (24 KB)
+│   ├── scaler.pkl                 # ├─ Feature scaling (895 B)
+│   └── feature_names.pkl          # └─ Dataset columns (1.5 KB)
+│
+├── 📁 reporter/                   # 📊 Report Generation
+│   └── html_generator.py          # └─ Cyberpunk HTML reports
+│
+├── 📁 assets/                     # 🎨 Visual Resources
+│   └── gui_preview.png            # └─ Interface screenshot
+│
+├── 📁 outputs/                    # 💾 Generated Reports
+│   ├── scan_result.json           # ├─ Raw scan data
+│   └── report.html                # └─ Formatted HTML report
+│
+└── 📁 tests/                      # 🧪 Test Suite
+    ├── test_host_discovery.py
+    ├── test_port_scanner.py
+    └── test_model_reliability.py
 ```
 
 ---
 
-## 📡 Exemple concret d'utilisation
+## 🧠 AI Engine
 
-Imaginez que vous voulez voir ce qui tourne sur votre box internet ou votre ordinateur :
+Le module `model/` embarque un **pipeline complet de Machine Learning** pour la prédiction de vulnérabilités.
 
-1. **Entrée** : Vous choisissez le mode "Détection automatique".
-2. **Traitement** :
-   - Le programme trouve votre réseau : `192.168.1.0/24`.
-   - Il détecte votre PC à l'IP `192.168.1.15`.
-   - Vous lancez un scan rapide sur les ports communs.
-3. **Sortie** :
-   - Le port `80` est **OUVERT**.
-   - Service détecté : `HTTP`.
-   - Version : `Apache/2.4.41`.
-   - Un fichier `scan_result.json` est créé avec ces détails.
+### 🔬 Pipeline Technique
 
----
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Service    │ ──▶ │  Quantile   │ ──▶ │   Random    │ ──▶ │   Threat    │
+│  Detection  │     │ Transformer │     │   Forest    │     │   Level     │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+   port + banner    normalize versions   classify risk      🔴 🟠 🟡 🟢
+```
 
-## ⚠️ Gestion des erreurs
+### 📦 Composants
 
-Le programme est robuste et prévoit plusieurs cas de figure :
+| Fichier                    | Taille      | Rôle                                 |
+| -------------------------- | ----------- | ------------------------------------ |
+| `vulnerability_model.pkl`  | **~5.1 GB** | Classifieur Random Forest principal  |
+| `quantile_transformer.pkl` | 24 KB       | Normalisation des numéros de version |
+| `scaler.pkl`               | 895 B       | Mise à l'échelle des features        |
+| `feature_names.pkl`        | 1.5 KB      | Liste des colonnes du dataset        |
 
-- **Timeout** : Si une machine est trop lente à répondre, le programme passe à la suivante sans se bloquer.
-- **Permission refusée** : Si Scapy ne peut pas accéder à la carte réseau (souvent par manque de privilèges `sudo` ou Admin), le programme bascule sur des méthodes alternatives plus simples.
-- **IP Invalide** : Le module `utils.py` vérifie chaque saisie utilisateur pour éviter les plantages.
+### 🎓 Entraînement
 
----
+Le modèle a été entraîné sur `dataset_model_normalized.csv`, un dataset contenant des **signatures de services** et leurs **ports associés à des vulnérabilités CVE connues**. Le script d'entraînement `model/code_training.py` est inclus pour réentraîner ou affiner le modèle.
 
-## 🚀 Améliorations possibles
-
-- [ ] **Scan UDP** : Ajouter le support pour le protocole UDP (plus complexe car sans connexion).
-- [ ] **Détection d'OS** : Utiliser Scapy pour analyser la pile TCP/IP et deviner si la cible est sous Windows, Linux ou Android.
-- [ ] **Interface Graphique (GUI)** : Créer une fenêtre avec des graphiques pour visualiser le réseau.
-- [ ] **Historique** : Garder une trace de tous les scans passés dans une base de données SQLite.
+> ⚠️ **Note importante** : Les fichiers `.pkl` (notamment `vulnerability_model.pkl` ~5 GB) ne sont **pas inclus** dans le dépôt Git. Voir la section _Setup_ pour les instructions de téléchargement.
 
 ---
 
-## 📖 Glossaire
+## 📦 Dependencies
 
-- **IP (Internet Protocol)** : L'adresse postale de votre machine sur le réseau.
-- **Port** : Un numéro (0 à 65535) qui définit une application spécifique (ex: 80 pour le web).
-- **CIDR (192.168.1.0/24)** : Une notation raccourcie pour définir une plage d'adresses IP.
-- **ARP** : Le protocole qui permet de traduire une IP en adresse physique (MAC) sur un réseau local.
+| Library              | Role                                 |
+| -------------------- | ------------------------------------ |
+| 🌐 **scapy**         | Manipulation de paquets réseau (ARP) |
+| 🖥️ **psutil**        | Détection des interfaces réseau      |
+| 🎨 **customtkinter** | Interface graphique cyberpunk        |
+| 🌈 **colorama**      | Couleurs terminal (CLI)              |
+| 📊 **tqdm**          | Barres de progression                |
+| 🐼 **pandas**        | Manipulation de données IA           |
+| 🔢 **numpy**         | Calculs numériques                   |
+| 💾 **joblib**        | Chargement des modèles `.pkl`        |
+| 🧠 **scikit-learn**  | Random Forest Classifier             |
+| 🧪 **pytest**        | Framework de tests                   |
 
 ---
 
-💡 **Conseil d'expert** : Pour comprendre le projet, commencez par lire `scanner/utils.py` (la base), puis remontez vers `main.py`.
+## 🧪 Testing
 
-_Développé avec ❤️ par Amine Nahli._
+Le projet inclut une suite de tests unitaires pour garantir la fiabilité des modules critiques :
+
+```bash
+# Lancer tous les tests
+pytest tests/
+
+# Avec output verbeux
+pytest tests/ -v
+
+# Test spécifique
+pytest tests/test_port_scanner.py
+```
+
+**Modules testés :**
+
+- ✅ `test_host_discovery.py` — Découverte d'hôtes
+- ✅ `test_port_scanner.py` — Scan de ports
+- ✅ `test_model_reliability.py` — Fiabilité du modèle IA
+
+---
+
+## ⚙️ Configuration
+
+Les paramètres principaux sont définis directement dans le code :
+
+| Paramètre     | Valeur             | Localisation         |
+| ------------- | ------------------ | -------------------- |
+| `FAST_PORTS`  | 22 ports critiques | `app.py` / `main.py` |
+| `max_workers` | 200 threads        | Scanner config       |
+| `TIMEOUT`     | 1.5s — 2.5s        | Socket operations    |
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] 🐳 **Docker support** pour déploiement simplifié
+- [ ] 🌍 **Support IPv6** complet
+- [ ] 📱 **Version web** (Flask/FastAPI)
+- [ ] 🔌 **Système de plugins** extensible
+- [ ] 📊 **Export PDF** des rapports
+- [ ] 🌐 **Internationalisation** (EN/FR/ES)
+- [ ] 🤖 **Intégration CVE database** en temps réel
+- [ ] ☁️ **Hébergement modèle IA** (Hugging Face)
+
+---
+
+## 🤝 Contributing
+
+Les contributions sont **les bienvenues** ! Voici comment participer :
+
+1. 🍴 **Fork** le projet
+2. 🌿 Créez votre branche feature (`git checkout -b feature/AmazingFeature`)
+3. 💾 Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. 📤 Push vers la branche (`git push origin feature/AmazingFeature`)
+5. 🎉 Ouvrez une **Pull Request**
+
+---
+
+## ⚠️ Legal Disclaimer
+
+> **🚨 USAGE RESPONSABLE OBLIGATOIRE 🚨**
+>
+> Cet outil est conçu **exclusivement** à des fins :
+>
+> - 🎓 Pédagogiques et éducatives
+> - 🔐 D'audit de sécurité **autorisé**
+> - 🛡️ De diagnostic sur **vos propres réseaux**
+>
+> **L'utilisation de cet outil sur des réseaux sans autorisation explicite est ILLÉGALE** et peut être passible de poursuites pénales selon les législations en vigueur (Loi Godfrain en France, CFAA aux USA, etc.).
+>
+> **L'auteur décline toute responsabilité en cas d'usage malveillant ou non autorisé.**
+
+---
+
+## 📜 License
+
+Ce projet est distribué sous **Licence MIT**. Voir le fichier [`LICENSE`](LICENSE) pour plus de détails.
+
+```
+MIT License — Copyright (c) 2026 Amine Nahli
+```
+
+---
+
+<div align="center">
+
+## 👨‍💻 Author
+
+### **Amine Nahli**
+
+_Cybersecurity Enthusiast & AI Developer_
+
+<p>
+  <a href="https://github.com/Amine-NAHLI">
+    <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+  </a>
+</p>
+
+<br/>
+
+### ⭐ Si ce projet vous a plu, laissez une étoile sur GitHub ! ⭐
+
+<br/>
+
+**Made with ❤️ and ☕ by Amine Nahli**
+
+_March 2026 — Smart Network Mapper Project_
+
+</div>

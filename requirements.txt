@@ -1,10 +1,18 @@
+# Core Scanner
 scapy
 psutil
+icmplib
+
+# GUI & UX
+customtkinter
+colorama
+tqdm
+
+# Machine Learning & Data
 pandas
 numpy
 joblib
-colorama
-tqdm
-customtkinter
+scikit-learn
+
+# Testing
 pytest
-icmplib
