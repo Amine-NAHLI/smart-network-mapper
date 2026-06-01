@@ -1,55 +1,36 @@
 """
-Téléchargement des modèles IA depuis Hugging Face Hub.
-À exécuter une seule fois après le clonage du projet.
+Téléchargement des modèles IA depuis Hugging Face Hub (ligne de commande).
 """
-import os
 import sys
 
 try:
-    # pyrefly: ignore [missing-import]
-    from huggingface_hub import hf_hub_download
+    from huggingface_hub import hf_hub_download  # noqa: F401 — vérifie l'installation
 except ImportError:
-    print("❌ Erreur : 'huggingface_hub' n'est pas installé.")
-    print("Veuillez lancer : pip install huggingface_hub")
+    print("Erreur : 'huggingface_hub' n'est pas installé.")
+    print("Lancez : pip install huggingface_hub")
     sys.exit(1)
 
-REPO_ID = "aminenahli/smart-network-mapper-models"
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "model")
-FILES = [
-    "vulnerability_model.pkl",
-    "quantile_transformer.pkl",
-    "scaler.pkl",
-    "feature_names.pkl",
-]
+from model_download import REPO_ID, download_all_models
+
 
 def download_models():
-    if not os.path.exists(MODEL_DIR):
-        os.makedirs(MODEL_DIR)
-        
-    print("\n🛰️  Smart Network Mapper — Téléchargement des modèles IA")
-    print(f"🔗 Source : https://huggingface.co/{REPO_ID}")
+    print("\nSmart Network Mapper — Téléchargement des modèles IA")
+    print(f"Source : https://huggingface.co/{REPO_ID}")
     print("-" * 50)
-    
-    for filename in FILES:
-        dest = os.path.join(MODEL_DIR, filename)
-        if os.path.exists(dest):
-            print(f"✅ {filename:<25} | Déjà présent, skip.")
-            continue
-            
-        print(f"⬇️  Téléchargement de {filename:<22}...", end="", flush=True)
-        try:
-            hf_hub_download(
-                repo_id=REPO_ID, 
-                filename=filename, 
-                local_dir=MODEL_DIR,
-                local_dir_use_symlinks=False
-            )
-            print(" [ TERMINÉ ]")
-        except Exception as e:
-            print(f" [ ERREUR : {e} ]")
-            
+
+    def on_progress(index, total, filename, phase):
+        if phase == "skip":
+            print(f"  {filename:<30} déjà présent")
+        elif phase == "download":
+            print(f"  Téléchargement {index + 1}/{total} : {filename} ...")
+        elif phase == "done":
+            print(f"  {filename:<30} terminé")
+
+    download_all_models(on_progress=on_progress)
+
     print("-" * 50)
-    print("🎉 Tous les modèles sont prêts !\n")
+    print("Tous les modèles sont prêts.\n")
+
 
 if __name__ == "__main__":
     download_models()

@@ -2,7 +2,11 @@ import customtkinter as ctk
 import threading
 import os
 
-from snm_paths import get_base_dir, get_model_dir
+from snm_paths import get_base_dir, fix_frozen_stdio, configure_hf_download_env
+from model_download import download_all_models
+
+fix_frozen_stdio()
+configure_hf_download_env()
 
 # ── Configuration visuelle (même style que SNM) ──────────────────────
 ctk.set_appearance_mode("dark")
@@ -125,45 +129,25 @@ class DownloaderApp(ctk.CTk):
 
     def _download_worker(self):
         try:
-            from huggingface_hub import hf_hub_download, list_repo_files
-            import huggingface_hub
+            def on_progress(index, total, filename, phase):
+                if phase == "skip":
+                    self._update_status(f"Déjà présent : {filename}", (index + 1) / total)
+                elif phase == "download":
+                    self._update_status(
+                        f"Téléchargement {index + 1}/{total} : {filename}",
+                        index / total,
+                    )
+                elif phase == "done":
+                    self._update_status(f"✓ {filename}", (index) / total)
 
-            repo_id = "aminenahli/smart-network-mapper-models"
-            model_dir = get_model_dir()
-            os.makedirs(model_dir, exist_ok=True)
+            download_all_models(on_progress=on_progress)
 
-            files = [
-                "vulnerability_model.pkl",
-                "quantile_transformer.pkl",
-                "scaler.pkl",
-                "feature_names.pkl",
-            ]
-
-            total = len(files)
-
-            for i, filename in enumerate(files):
-                self._update_status(
-                    f"Téléchargement {i+1}/{total} : {filename}",
-                    (i / total)
-                )
-
-                hf_hub_download(
-                    repo_id=repo_id,
-                    filename=filename,
-                    local_dir=model_dir,
-                )
-
-                self._update_status(
-                    f"✓ {filename}",
-                    ((i + 1) / total)
-                )
-
-            # Succès
             self._update_status("✅ Téléchargement terminé ! Lancement de SNM...", 1.0)
             self.after(1500, self._launch_app)
 
         except Exception as e:
-            self._update_status(f"❌ Erreur : {str(e)}", 0)
+            msg = str(e).strip() or type(e).__name__
+            self._update_status(f"❌ Erreur : {msg}", 0)
             self.after(0, lambda: self.btn.configure(
                 state="normal",
                 text="RÉESSAYER"

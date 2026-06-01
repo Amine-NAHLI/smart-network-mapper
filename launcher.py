@@ -2,7 +2,15 @@ import ctypes
 import sys
 import os
 
-from snm_paths import get_base_dir, get_model_dir
+from snm_paths import (
+    get_base_dir,
+    get_model_dir,
+    fix_frozen_stdio,
+    configure_hf_download_env,
+)
+
+fix_frozen_stdio()
+configure_hf_download_env()
 
 
 def is_admin():
@@ -32,10 +40,11 @@ def relaunch_as_admin():
 
 
 def models_exist(base_dir=None):
-    model_path = os.path.join(
-        base_dir or get_base_dir(), "model", "vulnerability_model.pkl"
-    )
-    return os.path.isfile(model_path)
+    if base_dir is not None:
+        model_path = os.path.join(base_dir, "model", "vulnerability_model.pkl")
+        return os.path.isfile(model_path) and os.path.getsize(model_path) > 0
+    from model_download import all_models_present
+    return all_models_present()
 
 
 def launch():
