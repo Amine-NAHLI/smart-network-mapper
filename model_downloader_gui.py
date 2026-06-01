@@ -1,17 +1,12 @@
 import customtkinter as ctk
 import threading
 import os
-import sys
-import subprocess
+
+from snm_paths import get_base_dir, get_model_dir
 
 # ── Configuration visuelle (même style que SNM) ──────────────────────
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
-
-def get_base_dir():
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
 
 class DownloaderApp(ctk.CTk):
     def __init__(self):
@@ -134,7 +129,7 @@ class DownloaderApp(ctk.CTk):
             import huggingface_hub
 
             repo_id = "aminenahli/smart-network-mapper-models"
-            model_dir = os.path.join(self.base_dir, "model")
+            model_dir = get_model_dir()
             os.makedirs(model_dir, exist_ok=True)
 
             files = [
@@ -180,10 +175,15 @@ class DownloaderApp(ctk.CTk):
         self.after(0, lambda: self.progress_bar.set(progress))
 
     def _launch_app(self):
-        app_path = os.path.join(self.base_dir, "app.py")
-        subprocess.Popen([sys.executable, app_path])
         self.destroy()
+        from app import run_app
+        run_app()
 
-if __name__ == "__main__":
+
+def run_downloader():
     app = DownloaderApp()
     app.mainloop()
+
+
+if __name__ == "__main__":
+    run_downloader()

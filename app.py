@@ -1,7 +1,11 @@
+import sys
+
 try:
     import customtkinter as ctk
 except ImportError:
-    import subprocess, sys
+    if getattr(sys, "frozen", False):
+        raise
+    import subprocess
     subprocess.check_call([sys.executable, "-m", "pip", "install", "customtkinter"])
     import customtkinter as ctk
 
@@ -23,6 +27,7 @@ from scanner.device_info import get_hostname_dns, get_mac_arp
 from scanner.utils import detect_lan_config
 from model.predictor import predict
 from reporter.html_generator import generate_html_report
+from snm_paths import get_outputs_dir, ensure_outputs_dir
 
 from tkinter import ttk
 
@@ -54,8 +59,12 @@ WHITE   = TEXT_PRIMARY
 FAST_PORTS = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445,
               993, 995, 1723, 3306, 3389, 5900, 8080, 8443, 8888, 9090]
 
-OUTPUTS_DIR      = "outputs"
-SCAN_RESULT_PATH = os.path.join(OUTPUTS_DIR, "scan_result.json")
+def _outputs_dir():
+    return get_outputs_dir()
+
+
+def _scan_result_path():
+    return os.path.join(_outputs_dir(), "scan_result.json")
 
 PAGES      = ["DASHBOARD", "NEW SCAN", "RESULTS", "ABOUT"]
 PAGE_ICONS = {"DASHBOARD": "◈", "NEW SCAN": "◉", "RESULTS": "▣", "ABOUT": "◎"}
@@ -330,7 +339,7 @@ class SmartNetworkMapper(ctk.CTk):
         for w in self.dash_scroll.winfo_children():
             w.destroy()
 
-        if not os.path.exists(SCAN_RESULT_PATH):
+        if not os.path.exists(_scan_result_path()):
             self._dash_reset_stats()
             ctk.CTkLabel(self.dash_scroll,
                          text="No scan data found. Start a new scan.",
@@ -338,7 +347,7 @@ class SmartNetworkMapper(ctk.CTk):
             return
 
         try:
-            with open(SCAN_RESULT_PATH, "r", encoding="utf-8") as f:
+            with open(_scan_result_path(), "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception:
             self._dash_reset_stats()
@@ -874,7 +883,7 @@ class SmartNetworkMapper(ctk.CTk):
         self._refresh_dashboard()
 
     def _save_result(self, ip, results, duration):
-        os.makedirs(OUTPUTS_DIR, exist_ok=True)
+        ensure_outputs_dir()
         data = {
             "cible":            ip,
             "date":             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -893,12 +902,12 @@ class SmartNetworkMapper(ctk.CTk):
                 for r in results
             ],
         }
-        with open(SCAN_RESULT_PATH, "w", encoding="utf-8") as f:
+        with open(_scan_result_path(), "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
             
         # Génération automatique du rapport HTML Premium
         try:
-            report_path = os.path.join(OUTPUTS_DIR, "report.html")
+            report_path = os.path.join(_outputs_dir(), "report.html")
             generate_html_report(data, report_path)
         except Exception:
             pass
@@ -1330,7 +1339,7 @@ class SmartNetworkMapper(ctk.CTk):
                 setattr(self, attr, None)
 
     def _open_html_report(self):
-        report_path = os.path.abspath(os.path.join(OUTPUTS_DIR, "report.html"))
+        report_path = os.path.abspath(os.path.join(_outputs_dir(), "report.html"))
         if os.path.exists(report_path):
             webbrowser.open(f"file://{report_path}")
         else:
@@ -1344,8 +1353,8 @@ class SmartNetworkMapper(ctk.CTk):
         )
         if not path:
             return
-        if os.path.exists(SCAN_RESULT_PATH):
-            with open(SCAN_RESULT_PATH, "r", encoding="utf-8") as f:
+        if os.path.exists(_scan_result_path()):
+            with open(_scan_result_path(), "r", encoding="utf-8") as f:
                 data = f.read()
             with open(path, "w", encoding="utf-8") as f:
                 f.write(data)
@@ -1354,7 +1363,11 @@ class SmartNetworkMapper(ctk.CTk):
             messagebox.showwarning("Export", "No scan data to export.")
 
 
-# ════════════════════════════════════════════════════════════════
-if __name__ == "__main__":
+def run_app():
     app = SmartNetworkMapper()
     app.mainloop()
+
+
+# ════════════════════════════════════════════════════════════════
+if __name__ == "__main__":
+    run_app()
