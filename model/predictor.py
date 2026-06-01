@@ -17,15 +17,18 @@ import threading
 import numpy as np
 import pandas as pd
 
-# ──────────────────────────────────────────────────────────────
-# Chemins vers les artefacts
-# ──────────────────────────────────────────────────────────────
-_MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
+from snm_paths import get_model_dir
 
-_MODEL_PATH       = os.path.join(_MODEL_DIR, "vulnerability_model.pkl")
-_SCALER_PATH      = os.path.join(_MODEL_DIR, "scaler.pkl")
-_QT_PATH          = os.path.join(_MODEL_DIR, "quantile_transformer.pkl")
-_FEATURES_PATH    = os.path.join(_MODEL_DIR, "feature_names.pkl")
+
+def _artifact_paths():
+    """Chemins des .pkl : dossier model/ à côté de l'exe en mode frozen."""
+    model_dir = get_model_dir()
+    return (
+        os.path.join(model_dir, "vulnerability_model.pkl"),
+        os.path.join(model_dir, "scaler.pkl"),
+        os.path.join(model_dir, "quantile_transformer.pkl"),
+        os.path.join(model_dir, "feature_names.pkl"),
+    )
 
 # ──────────────────────────────────────────────────────────────
 # Colonnes concernées par chaque transformateur
@@ -56,22 +59,24 @@ def _load_artifacts() -> None:
         if _model is not None:
             return
 
+    model_path, scaler_path, qt_path, features_path = _artifact_paths()
     for path, name in [
-        (_MODEL_PATH,    "vulnerability_model.pkl"),
-        (_SCALER_PATH,   "scaler.pkl"),
-        (_QT_PATH,       "quantile_transformer.pkl"),
-        (_FEATURES_PATH, "feature_names.pkl"),
+        (model_path,    "vulnerability_model.pkl"),
+        (scaler_path,   "scaler.pkl"),
+        (qt_path,       "quantile_transformer.pkl"),
+        (features_path, "feature_names.pkl"),
     ]:
         if not os.path.isfile(path):
             raise FileNotFoundError(
                 f"Artefact manquant : {name}\n"
-                f"Chemin attendu : {path}"
+                f"Chemin attendu : {path}\n"
+                f"Lancez l'application une première fois pour télécharger les modèles."
             )
 
-    _model         = joblib.load(_MODEL_PATH)
-    _scaler        = joblib.load(_SCALER_PATH)
-    _qt            = joblib.load(_QT_PATH)
-    _feature_names = joblib.load(_FEATURES_PATH)
+    _model         = joblib.load(model_path)
+    _scaler        = joblib.load(scaler_path)
+    _qt            = joblib.load(qt_path)
+    _feature_names = joblib.load(features_path)
 
 def load_model():
     """Charge manuellement les artefacts (utile au démarrage du serveur)."""
