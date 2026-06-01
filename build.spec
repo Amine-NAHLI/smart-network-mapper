@@ -31,6 +31,7 @@ a = Analysis(
     hiddenimports=[
         "app",
         "model_downloader_gui",
+        "model_download",
         "model.predictor",
         "snm_paths",
         "reporter.html_generator",
@@ -62,7 +63,7 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=["pyi_rth_snm_stdio.py"],
     excludes=[
         "outputs",
         "tests",
