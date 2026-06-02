@@ -1,0 +1,90 @@
+================================================================================
+  SMART NETWORK MAPPER (SNM) — Installation sur un PC Windows (nouveau PC)
+================================================================================
+
+Aucune installation de Python n'est necessaire. Utilisez le dossier fourni
+(ou le fichier ZIP decompresse).
+
+--------------------------------------------------------------------------------
+PREREQUIS (PC cible)
+--------------------------------------------------------------------------------
+  - Windows 10 ou 11 (64 bits)
+  - Droits administrateur (obligatoire au lancement)
+  - Connexion Internet (premier lancement uniquement, ~5,1 Go)
+  - Espace disque : ~6 Go libres (exe ~200 Mo + modeles ~5,1 Go)
+  - Optionnel : Npcap pour fonctions reseau avancees (ARP/Scapy)
+            https://npcap.com/#download
+
+--------------------------------------------------------------------------------
+INSTALLATION (3 etapes)
+--------------------------------------------------------------------------------
+
+  1) Copiez le dossier complet "SNM" sur le PC
+     Exemple : C:\Programmes\SNM\
+     NE COPIEZ PAS seulement SNM.exe — tout le dossier est requis.
+
+  2) Double-cliquez sur SNM.exe
+     - Windows affiche UAC → cliquez OUI (administrateur)
+     - Si les modeles ne sont pas presents : fenetre de telechargement
+       Cliquez "TELECHARGER LES MODELES" et attendez la fin (~5,1 Go).
+
+  3) L'application principale s'ouvre
+     Utilisez NEW SCAN pour scanner votre reseau local.
+
+--------------------------------------------------------------------------------
+DEUX VERSIONS DE DISTRIBUTION
+--------------------------------------------------------------------------------
+
+  A) VERSION LEGERE (~200 Mo) — recommandee (USB / lien web)
+     Contenu : dossier SNM sans sous-dossier model\ rempli
+     Premier lancement : telechargement automatique des modeles IA
+
+  B) VERSION COMPLETE (~5,5 Go) — recommandee (cle USB / partage local)
+     Contenu : dossier SNM avec model\ contenant les 4 fichiers .pkl
+     Premier lancement : ouverture directe, sans telechargement
+     NOTE : copiez le DOSSIER entier sur la cle USB (pas obligatoire de ZIP).
+            Les ZIP > 2 Go echouent avec l'outil Windows par defaut ;
+            utilisez le dossier release\SNM_Windows_Portable\ ou un ZIP
+            cree avec 7-Zip / tar si disponible.
+
+--------------------------------------------------------------------------------
+STRUCTURE DU DOSSIER SNM
+--------------------------------------------------------------------------------
+
+  SNM\
+    SNM.exe          <- Lancer ce fichier
+    _internal\       <- Bibliotheques (ne pas supprimer)
+    model\           <- Modeles IA (cree au 1er lancement ou copie)
+    outputs\         <- Rapports JSON/HTML (cree automatiquement)
+
+--------------------------------------------------------------------------------
+DEPANNAGE
+--------------------------------------------------------------------------------
+
+  - "Modèles IA requis" a chaque lancement
+    → Verifiez que model\vulnerability_model.pkl existe (~5 Go)
+
+  - Telechargement bloque
+    → Verifiez Internet et https://huggingface.co
+    → Relancez SNM.exe et cliquez REESSAYER
+    → Cache temporaire : %LOCALAPPDATA%\SmartNetworkMapper\
+
+  - Windows Defender bloque l'exe
+    → Autoriser SNM.exe (faux positif frequent avec PyInstaller)
+
+  - Scan reseau limite
+    → Relancer SNM.exe en administrateur
+    → Installer Npcap si necessaire
+
+  - Rebuild / developpeur uniquement
+    → Voir le depot source et build.bat (Python 3.8+ requis)
+
+--------------------------------------------------------------------------------
+USAGE RESPONSABLE
+--------------------------------------------------------------------------------
+  Utilisez SNM uniquement sur vos reseaux ou avec autorisation ecrite.
+  L'usage non autorise peut etre illegal.
+
+================================================================================
+  Smart Network Mapper — Amine Nahli — MIT License
+================================================================================
