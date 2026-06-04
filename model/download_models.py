@@ -10,7 +10,7 @@ except ImportError:
     print("Lancez : pip install huggingface_hub")
     sys.exit(1)
 
-from model_download import REPO_ID, download_all_models
+from model.model_download import REPO_ID, download_all_models
 
 
 def download_models():

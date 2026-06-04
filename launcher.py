@@ -43,7 +43,7 @@ def models_exist(base_dir=None):
     if base_dir is not None:
         model_path = os.path.join(base_dir, "model", "vulnerability_model.pkl")
         return os.path.isfile(model_path) and os.path.getsize(model_path) > 0
-    from model_download import all_models_present
+    from model.model_download import all_models_present
     return all_models_present()
 
 
@@ -55,7 +55,7 @@ def launch():
         from app import run_app
         run_app()
     else:
-        from model_downloader_gui import run_downloader
+        from model.model_downloader_gui import run_downloader
         run_downloader()
 
 

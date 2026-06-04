@@ -3,7 +3,7 @@ import threading
 import os
 
 from snm_paths import get_base_dir, fix_frozen_stdio, configure_hf_download_env
-from model_download import download_all_models
+from model.model_download import download_all_models
 
 fix_frozen_stdio()
 configure_hf_download_env()
