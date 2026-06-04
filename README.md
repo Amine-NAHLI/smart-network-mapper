@@ -8,33 +8,33 @@
   <img src="https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
   <img src="https://img.shields.io/badge/License-MIT-FFD700?style=for-the-badge" alt="License"/>
   <img src="https://img.shields.io/badge/AI-Random_Forest-FF00FF?style=for-the-badge&logo=scikitlearn&logoColor=white" alt="AI"/>
-  <img src="https://img.shields.io/badge/Status-Beta-00FF00?style=for-the-badge" alt="Status"/>
+  <img src="https://img.shields.io/badge/SQLite-History-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite"/>
+  <img src="https://img.shields.io/badge/Status-v1.0-00FF00?style=for-the-badge" alt="Status"/>
 </p>
 
 <p>
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20MacOS-lightgrey?style=flat-square" alt="Platform"/>
   <img src="https://img.shields.io/badge/GUI-CustomTkinter-1f6feb?style=flat-square" alt="GUI"/>
-  <img src="https://img.shields.io/badge/Multi--Threaded-200_Workers-success?style=flat-square" alt="Threading"/>
+  <img src="https://img.shields.io/badge/Multi--Threaded-300_Workers-success?style=flat-square" alt="Threading"/>
   <img src="https://img.shields.io/badge/Engine-Scapy_%2B_Socket-orange?style=flat-square" alt="Engine"/>
+  <img src="https://img.shields.io/badge/Database-SQLite_WAL-blue?style=flat-square" alt="Database"/>
 </p>
 
 <br/>
 
-**A premium cyberpunk-styled network scanner combining industrial-grade analysis with an immersive user interface.**
+**A premium cyberpunk-styled network scanner combining industrial-grade analysis with an immersive user interface and AI-powered vulnerability prediction.**
 
 <br/>
 
 [Features](#-key-features) •
+[Architecture](#%EF%B8%8F-project-architecture) •
 [Installation](#%EF%B8%8F-installation) •
 [Usage](#-usage) •
-[Architecture](#%EF%B8%8F-project-architecture) •
 [AI Engine](#-ai-engine) •
+[Build & Deploy](#-build--deploy) •
 [License](#-license)
 
-
 <br/>
-
-![GUI Preview](assets/gui_preview.png)
 
 </div>
 
@@ -42,30 +42,32 @@
 
 ## 🌟 Why Smart Network Mapper?
 
-> _"Pas un simple scanner. Une suite de diagnostic réseau complète, alimentée par l'intelligence artificielle."_
+> _"Not just a scanner. A complete network diagnostic suite, powered by artificial intelligence."_
 
-**Smart Network Mapper (SNM)** combine la **puissance d'analyse** des outils professionnels de cybersécurité avec une **expérience utilisateur moderne** et une **intelligence prédictive** capable d'évaluer en temps réel le niveau de menace de chaque service détecté sur votre réseau.
+**Smart Network Mapper (SNM)** combines the **analysis power** of professional cybersecurity tools with a **modern user experience** and **predictive intelligence** capable of evaluating in real-time the threat level of each service detected on your network.
 
 <table>
 <tr>
 <td width="50%">
 
-### 🎯 Pour qui ?
+### 🎯 Who is it for?
 
-- 🔐 **Pentesters** & auditeurs de sécurité
-- 👨‍💻 **Administrateurs** réseau
-- 🎓 **Étudiants** en cybersécurité
-- 🛡️ **Professionnels IT** soucieux de leur infrastructure
+- 🔐 **Pentesters** & security auditors
+- 👨‍💻 **Network administrators**
+- 🎓 **Cybersecurity students**
+- 🛡️ **IT professionals** concerned about their infrastructure
 
 </td>
 <td width="50%">
 
-### ⚡ Pourquoi ?
+### ⚡ Why choose SNM?
 
-- 🚀 Scan **multi-threadé** (200 workers)
-- 🧠 IA prédictive **embarquée**
-- 🎨 Interface **cyberpunk premium**
-- 📊 Rapports **HTML & JSON** professionnels
+- 🚀 **Multi-threaded** scanning (up to 300 workers)
+- 🧠 **Embedded** AI vulnerability prediction
+- 🎨 **Cyberpunk premium** interface
+- 📊 Professional **HTML & JSON** reports
+- 💾 **Persistent scan history** (SQLite)
+- 📦 **Portable Windows EXE** (no install needed)
 
 </td>
 </tr>
@@ -77,29 +79,94 @@
 
 ### 🔍 Discovery & Mapping
 
-| Feature                      | Description                                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------------- |
-| 🌐 **Auto LAN Detection**    | Identification automatique de votre configuration réseau (Wi-Fi/Ethernet) via `psutil` |
-| 📡 **Hybrid Host Discovery** | Combine **TCP Ping** (Socket) et **ARP Requests** (Scapy) pour une détection maximale  |
-| 🖥️ **OS Fingerprinting**     | Estimation du système d'exploitation par analyse TTL                                   |
-| 🏷️ **Device Information**    | Récupération MAC, hostname et métadonnées de chaque appareil                           |
+| Feature                      | Description                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| 🌐 **Auto LAN Detection**    | Automatic identification of your network config (Wi-Fi/Ethernet) via `psutil`     |
+| 📡 **Hybrid Host Discovery** | Combines **TCP Ping** (Socket) and **ARP Requests** (Scapy) for maximum detection |
+| 🖥️ **OS Fingerprinting**     | OS estimation via TTL analysis                                                    |
+| 🏷️ **Device Information**    | MAC address, hostname & metadata retrieval for each device                        |
 
 ### 🛡️ Security Analysis
 
-| Feature                           | Description                                                                      |
-| --------------------------------- | -------------------------------------------------------------------------------- |
-| ⚡ **Multi-Mode Scanning**        | Modes **Rapide** (22 ports critiques), **Complet** (1-65535) ou **Personnalisé** |
-| 🎯 **Banner Grabbing**            | Sondes spécialisées pour **HTTP, SSH, FTP, MySQL, Redis** et plus                |
-| 🔬 **Service Versioning**         | Extraction précise des signatures de services                                    |
-| 🧠 **AI Vulnerability Predictor** | Évaluation automatique du risque via **Random Forest**                           |
+| Feature                           | Description                                                          |
+| --------------------------------- | -------------------------------------------------------------------- |
+| ⚡ **Multi-Mode Scanning**        | **Fast** (22 critical ports), **Full** (1-65535) or **Custom** modes |
+| 🎯 **Banner Grabbing**            | Specialized probes for **HTTP, SSH, FTP, MySQL, Redis** and more     |
+| 🔬 **Service Versioning**         | Precise service signature extraction                                 |
+| 🧠 **AI Vulnerability Predictor** | Automatic risk evaluation via **Random Forest** classifier           |
 
-### 📊 Reporting & Export
+### 📊 Reporting, Export & History
 
-| Feature                    | Description                                                |
-| -------------------------- | ---------------------------------------------------------- |
-| 🎨 **Premium HTML Report** | Design responsive avec graphiques SVG cyberpunk            |
-| 📦 **JSON Export**         | Données structurées prêtes pour intégration                |
-| 📈 **Real-Time Dashboard** | Visualisation live du score de sécurité et ports critiques |
+| Feature                    | Description                                                         |
+| -------------------------- | ------------------------------------------------------------------- |
+| 🎨 **Premium HTML Report** | Responsive design with cyberpunk SVG charts                         |
+| 📦 **JSON Export**         | Structured data ready for integration                               |
+| 📈 **Real-Time Dashboard** | Live visualization of security score and critical ports             |
+| 💾 **SQLite Scan History** | All scans are saved locally; reload, compare or delete past results |
+
+---
+
+## 🏗️ Project Architecture
+
+```
+smart-network-mapper/
+│
+├── 📄 app.py                          # 🎨 GUI Orchestrator (~200 lines)
+├── 📄 launcher.py                     # 🚀 Entry point (model check → app or downloader)
+├── 📄 snm_paths.py                    # 📍 Cross-platform path management
+├── 📄 requirements.txt                # 📦 Python dependencies
+├── 📄 LICENSE                         # 📜 MIT License
+│
+├── 📁 gui/                            # 🖥️ Modular GUI Package
+│   ├── constants.py                   # ├─ Design-system tokens (colors, fonts, ports)
+│   ├── db.py                          # ├─ SQLite database manager (scan history)
+│   └── 📁 pages/                      # └─ Individual page modules
+│       ├── dashboard.py               #     ├─ Overview: stats cards, pie chart
+│       ├── new_scan.py                #     ├─ Scan config, host discovery, port scan
+│       ├── results.py                 #     ├─ Detailed results table with search/filter
+│       ├── history.py                 #     ├─ Persistent scan history (SQLite)
+│       └── about.py                   #     └─ Animated cyberpunk about page
+│
+├── 📁 scanner/                        # 🔬 Core Scanning Engine
+│   ├── host_discovery.py              # ├─ Hybrid TCP/ARP host detection
+│   ├── port_scanner.py                # ├─ Multi-threaded port scanning
+│   ├── device_info.py                 # ├─ MAC, hostname, OS fingerprinting
+│   └── utils.py                       # └─ LAN auto-detection utilities
+│
+├── 📁 model/                          # 🧠 AI Vulnerability Engine
+│   ├── predictor.py                   # ├─ Inference pipeline (Random Forest)
+│   ├── model_download.py              # ├─ Hugging Face model fetcher
+│   ├── model_downloader_gui.py        # ├─ GUI for first-launch model download
+│   ├── download_models.py             # ├─ CLI model download script
+│   ├── vulnerability_model.pkl        # ├─ Main RF classifier (~5.1 GB)
+│   ├── quantile_transformer.pkl       # ├─ Version normalization (24 KB)
+│   ├── scaler.pkl                     # ├─ Feature scaling (895 B)
+│   └── feature_names.pkl              # └─ Dataset column names (1.5 KB)
+│
+├── 📁 reporter/                       # 📊 Report Generation
+│   └── html_generator.py              # └─ Premium cyberpunk HTML reports
+│
+├── 📁 build_tools/                    # 🔧 Build & Release Pipeline
+│   ├── build.bat                      # ├─ PyInstaller compilation script
+│   ├── build.spec                     # ├─ PyInstaller spec file
+│   ├── package_release.bat            # ├─ Portable package creator
+│   ├── upload_windows_release.py      # ├─ Hugging Face ZIP uploader
+│   └── pyi_rth_snm_stdio.py          # └─ PyInstaller runtime hook
+│
+├── 📁 cli/                            # ⌨️ Command-Line Interface
+│   └── main.py                        # └─ Interactive CLI scanner (colorama + tqdm)
+│
+├── 📁 assets/                         # 🎨 Visual Resources
+├── 📁 outputs/                        # 💾 Generated Reports & SQLite DB
+│   ├── scan_result.json               # ├─ Latest scan data
+│   ├── report.html                    # ├─ Latest HTML report
+│   └── history.db                     # └─ SQLite scan history database
+│
+└── 📁 tests/                          # 🧪 Test Suite
+    ├── test_host_discovery.py
+    ├── test_port_scanner.py
+    └── test_model_reliability.py
+```
 
 ---
 
@@ -113,101 +180,89 @@
 
 **🐍 Python**
 
-- Version **3.8+** requise
-- pip à jour recommandé
+- Version **3.8+** required
+- pip up-to-date recommended
 
 </td>
 <td>
 
 **🔐 Privileges**
 
-- **Admin/Root** requis pour ARP scan
-- Mode utilisateur : fonctions limitées
+- **Admin/Root** required for ARP scan
+- User mode: limited features
 
 </td>
 <td>
 
 **📡 Network Library**
 
-- **Windows** : [Npcap](https://npcap.com/) requis
-- **Linux/Mac** : libpcap natif
+- **Windows** : [Npcap](https://npcap.com/) required
+- **Linux/Mac** : native libpcap
 
 </td>
 </tr>
 </table>
 
-### 🚀 Quick Setup
-
-**1️⃣ Cloner le dépôt**
+### 🚀 Quick Setup (From Source)
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/Amine-NAHLI/smart-network-mapper.git
 cd smart-network-mapper
-```
 
-**2️⃣ Créer un environnement virtuel** _(recommandé)_
+# 2. Create a virtual environment (recommended)
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Linux/macOS
 
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# Linux / macOS
-python3 -m venv venv
-source venv/bin/activate
-```
-
-**3️⃣ Installer les dépendances**
-
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-**4️⃣ Télécharger les modèles IA**
+# 4. Download AI models (~5.1 GB from Hugging Face)
+python model\download_models.py
 
-Les modèles volumineux sont hébergés sur Hugging Face. Lancez le script pour les récupérer :
-
-```bash
-python download_models.py
-```
-
-**5️⃣ Vérifier l'installation**
-
-```bash
+# 5. Verify installation
 python -c "import scapy, customtkinter, sklearn, huggingface_hub; print('✅ All systems ready!')"
 ```
 
+### 📦 Portable Windows Installer (No Python Required)
 
-> ⚠️ **Note Windows** : Si vous obtenez une erreur Scapy, installez [Npcap](https://npcap.com/#download) en cochant _"Install Npcap in WinPcap API-compatible Mode"_.
+Download the pre-built portable version from our documentation site:
+
+1. Download `SNM_Windows_Portable_Complet.zip` from [the documentation](https://amine-nahli.github.io/snm-docs/)
+2. Extract the ZIP
+3. Run `SNM.exe` (accept the UAC admin prompt)
+
+> ⚠️ **Windows Note**: If you get a Scapy error, install [Npcap](https://npcap.com/#download) and check _"Install Npcap in WinPcap API-compatible Mode"_.
 
 ---
 
 ## 🚀 Usage
 
-### 🎨 Mode Graphique (GUI) — _Recommandé_
+### 🎨 Graphical Mode (GUI) — _Recommended_
 
-L'interface complète avec dashboard temps réel et visualisations cyberpunk :
+The full interface with real-time dashboard and cyberpunk visualizations:
 
 ```bash
 python app.py
 ```
 
-> 💡 **Lancer en admin** pour débloquer toutes les fonctionnalités ARP/Scapy :
+> 💡 **Run as admin** to unlock all ARP/Scapy features:
 >
-> - **Windows** : Clic droit sur le terminal → _Exécuter en tant qu'administrateur_
-> - **Linux/Mac** : `sudo python app.py`
+> - **Windows**: Right-click terminal → _Run as Administrator_
+> - **Linux/Mac**: `sudo python app.py`
 
-### ⚡ Mode Terminal (CLI)
+### ⚡ Terminal Mode (CLI)
 
-Idéal pour serveurs ou exécutions rapides en ligne de commande :
+Ideal for servers or quick command-line scans:
 
 ```bash
-python main.py
+python cli\main.py
 ```
 
-L'interface CLI est **100% interactive** avec menus colorés (Colorama) et barre de progression (tqdm).
+The CLI is **100% interactive** with colored menus (Colorama) and progress bars (tqdm).
 
-### 📖 Workflow Typique
+### 📖 Typical Workflow
 
 ```mermaid
 graph LR
@@ -215,67 +270,27 @@ graph LR
     B --> C[🎯 Select Target IP]
     C --> D[⚡ Launch Port Scan]
     D --> E[🧠 AI Analysis]
-    E --> F[📊 View Report]
-    F --> G[💾 Export HTML/JSON]
+    E --> F[💾 Save to History]
+    F --> G[📊 View Results / HTML Report]
 ```
 
-**Exemple en GUI :**
+**GUI Steps:**
 
-1. Cliquez sur **"Auto Detect"** → identifie votre subnet (ex: `192.168.1.0/24`)
-2. Cliquez sur **"Discover Hosts"** → liste les appareils actifs
-3. Sélectionnez une **IP cible** dans la liste
-4. Cliquez sur **"Launch Scan"** → analyse complète avec IA
-5. Consultez l'onglet **"RESULTS"** ou ouvrez le rapport HTML généré
-
----
-
-## 🏗️ Project Architecture
-
-```
-smart-network-mapper/
-│
-├── 📄 app.py                      # 🎨 GUI Entry Point (CustomTkinter)
-├── 📄 main.py                     # ⚡ CLI Entry Point (Interactive)
-├── 📄 requirements.txt            # 📦 Python Dependencies
-├── 📄 LICENSE                     # 📜 MIT License
-│
-├── 📁 scanner/                    # 🔬 Core Scanning Engine
-│   ├── host_discovery.py          # ├─ Hybrid TCP/ARP host detection
-│   ├── port_scanner.py            # ├─ Multi-threaded port scanning
-│   ├── device_info.py             # ├─ MAC, hostname, OS fingerprinting
-│   └── utils.py                   # └─ LAN auto-detection utilities
-│
-├── 📁 model/                      # 🧠 AI Vulnerability Engine
-│   ├── predictor.py               # ├─ Inference logic (Random Forest)
-│   ├── code_training.py           # ├─ Model training script
-│   ├── vulnerability_model.pkl    # ├─ Main RF classifier (5.1 GB)
-│   ├── quantile_transformer.pkl   # ├─ Version normalization (24 KB)
-│   ├── scaler.pkl                 # ├─ Feature scaling (895 B)
-│   └── feature_names.pkl          # └─ Dataset columns (1.5 KB)
-│
-├── 📁 reporter/                   # 📊 Report Generation
-│   └── html_generator.py          # └─ Cyberpunk HTML reports
-│
-├── 📁 assets/                     # 🎨 Visual Resources
-│   └── gui_preview.png            # └─ Interface screenshot
-│
-├── 📁 outputs/                    # 💾 Generated Reports
-│   ├── scan_result.json           # ├─ Raw scan data
-│   └── report.html                # └─ Formatted HTML report
-│
-└── 📁 tests/                      # 🧪 Test Suite
-    ├── test_host_discovery.py
-    ├── test_port_scanner.py
-    └── test_model_reliability.py
-```
+1. Click **"Auto Detect"** → identifies your subnet (e.g. `192.168.1.0/24`)
+2. Click **"Discover Hosts"** → lists active devices
+3. Select a **target IP** from the list
+4. Click **"Launch Scan"** → full analysis with AI prediction
+5. Results are **automatically saved** to SQLite history
+6. Check **"RESULTS"** tab or open the generated HTML report
+7. Revisit past scans anytime via the **"HISTORY"** tab
 
 ---
 
 ## 🧠 AI Engine
 
-Le module `model/` embarque un **pipeline complet de Machine Learning** pour la prédiction de vulnérabilités.
+The `model/` module embeds a **complete Machine Learning pipeline** for vulnerability prediction.
 
-### 🔬 Pipeline Technique
+### 🔬 Technical Pipeline
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -285,122 +300,112 @@ Le module `model/` embarque un **pipeline complet de Machine Learning** pour la 
    port + banner    normalize versions   classify risk      🔴 🟠 🟡 🟢
 ```
 
-### 📦 Composants
+### 📦 Model Components
 
-| Fichier                    | Taille      | Rôle                                 |
-| -------------------------- | ----------- | ------------------------------------ |
-| `vulnerability_model.pkl`  | **~5.1 GB** | Classifieur Random Forest principal  |
-| `quantile_transformer.pkl` | 24 KB       | Normalisation des numéros de version |
-| `scaler.pkl`               | 895 B       | Mise à l'échelle des features        |
-| `feature_names.pkl`        | 1.5 KB      | Liste des colonnes du dataset        |
+| File                       | Size        | Role                           |
+| -------------------------- | ----------- | ------------------------------ |
+| `vulnerability_model.pkl`  | **~5.1 GB** | Main Random Forest classifier  |
+| `quantile_transformer.pkl` | 24 KB       | Version number normalization   |
+| `scaler.pkl`               | 895 B       | Feature scaling (RobustScaler) |
+| `feature_names.pkl`        | 1.5 KB      | Dataset column names           |
 
-### 🎓 Entraînement
+> 💡 Models are hosted on [Hugging Face](https://huggingface.co/aminenahli/smart-network-mapper-models) and downloaded automatically on first launch.
 
-Le modèle a été entraîné sur `dataset_model_normalized.csv`, un dataset contenant des **signatures de services** et leurs **ports associés à des vulnérabilités CVE connues**. Le script d'entraînement `model/code_training.py` est inclus pour réentraîner ou affiner le modèle.
+---
 
-> 💡 **Tip** : Utilisez le script `download_models.py` pour récupérer automatiquement la dernière version des modèles depuis notre dépôt Hugging Face.
+## 🔧 Build & Deploy
 
+All build and release tools are located in the `build_tools/` directory.
+
+### Compile the Executable
+
+```cmd
+.\build_tools\build.bat
+```
+
+### Package the Portable Release (with AI Models)
+
+```cmd
+.\build_tools\package_release.bat
+```
+
+### Compress to ZIP & Upload to Hugging Face
+
+```cmd
+cd release
+tar -a -c -f SNM_Windows_Portable_Complet.zip SNM_Windows_Portable
+cd ..
+.venv\Scripts\python.exe build_tools\upload_windows_release.py
+```
+
+### Build & Deploy the Documentation Site
+
+```cmd
+cd ..\snm-docs
+npm run build
+npm run deploy
+```
 
 ---
 
 ## 📦 Dependencies
 
-| Library              | Role                                 |
-| -------------------- | ------------------------------------ |
-| 🌐 **scapy**         | Manipulation de paquets réseau (ARP) |
-| 🖥️ **psutil**        | Détection des interfaces réseau      |
-| 🎨 **customtkinter** | Interface graphique cyberpunk        |
-| 🌈 **colorama**      | Couleurs terminal (CLI)              |
-| 📊 **tqdm**          | Barres de progression                |
-| 🐼 **pandas**        | Manipulation de données IA           |
-| 🔢 **numpy**         | Calculs numériques                   |
-| 💾 **joblib**        | Chargement des modèles `.pkl`        |
-| 🧠 **scikit-learn**  | Random Forest Classifier             |
-| 🤗 **huggingface_hub**| Téléchargement des modèles IA        |
-| 🧪 **pytest**        | Framework de tests                   |
-
+| Library                | Role                              |
+| ---------------------- | --------------------------------- |
+| 🌐 **scapy**           | Network packet manipulation (ARP) |
+| 🖥️ **psutil**          | Network interface detection       |
+| 🎨 **customtkinter**   | Cyberpunk GUI framework           |
+| 🌈 **colorama**        | Terminal colors (CLI)             |
+| 📊 **tqdm**            | Progress bars                     |
+| 🐼 **pandas**          | AI data manipulation              |
+| 🔢 **numpy**           | Numerical computations            |
+| 💾 **joblib**          | Loading `.pkl` model files        |
+| 🧠 **scikit-learn**    | Random Forest Classifier          |
+| 🤗 **huggingface_hub** | AI model download                 |
+| 🧪 **pytest**          | Test framework                    |
 
 ---
 
 ## 🧪 Testing
 
-Le projet inclut une suite de tests unitaires pour garantir la fiabilité des modules critiques :
-
 ```bash
-# Lancer tous les tests
+# Run all tests
 pytest tests/
 
-# Avec output verbeux
+# Verbose output
 pytest tests/ -v
 
-# Test spécifique
+# Specific test
 pytest tests/test_port_scanner.py
 ```
 
-**Modules testés :**
+**Tested modules:**
 
-- ✅ `test_host_discovery.py` — Découverte d'hôtes
-- ✅ `test_port_scanner.py` — Scan de ports
-- ✅ `test_model_reliability.py` — Fiabilité du modèle IA
-
----
-
-## ⚙️ Configuration
-
-Les paramètres principaux sont définis directement dans le code :
-
-| Paramètre     | Valeur             | Localisation         |
-| ------------- | ------------------ | -------------------- |
-| `FAST_PORTS`  | 22 ports critiques | `app.py` / `main.py` |
-| `max_workers` | 200 threads        | Scanner config       |
-| `TIMEOUT`     | 1.5s — 2.5s        | Socket operations    |
-
----
-
-## 🗺️ Roadmap
-
-- [ ] 🐳 **Docker support** pour déploiement simplifié
-- [ ] 🌍 **Support IPv6** complet
-- [ ] 📱 **Version web** (Flask/FastAPI)
-- [ ] 🔌 **Système de plugins** extensible
-- [ ] 📊 **Export PDF** des rapports
-- [ ] 🌐 **Internationalisation** (EN/FR/ES)
-- [ ] 🤖 **Intégration CVE database** en temps réel
-- [ ] ☁️ **Hébergement modèle IA** (Hugging Face)
-
----
-
-## 🤝 Contributing
-
-Les contributions sont **les bienvenues** ! Voici comment participer :
-
-1. 🍴 **Fork** le projet
-2. 🌿 Créez votre branche feature (`git checkout -b feature/AmazingFeature`)
-3. 💾 Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. 📤 Push vers la branche (`git push origin feature/AmazingFeature`)
-5. 🎉 Ouvrez une **Pull Request**
+- ✅ `test_host_discovery.py` — Host discovery
+- ✅ `test_port_scanner.py` — Port scanning
+- ✅ `test_model_reliability.py` — AI model reliability
 
 ---
 
 ## ⚠️ Legal Disclaimer
 
-> **🚨 USAGE RESPONSABLE OBLIGATOIRE 🚨**
+> **🚨 RESPONSIBLE USE REQUIRED 🚨**
 >
-> Cet outil est conçu **exclusivement** à des fins :
+> This tool is designed **exclusively** for:
 >
-> - 🎓 Pédagogiques et éducatives
-> - 🔐 D'audit de sécurité **autorisé**
-> - 🛡️ De diagnostic sur **vos propres réseaux**
+> - 🎓 Educational and pedagogical purposes
+> - 🔐 **Authorized** security audits
+> - 🛡️ Diagnostics on **your own networks**
 >
-> **L'utilisation de cet outil sur des réseaux sans autorisation explicite est ILLÉGALE** et peut être passible de poursuites pénales selon les législations en vigueur (Loi Godfrain en France, CFAA aux USA, etc.).
+> **Using this tool on networks without explicit authorization is ILLEGAL** and may be subject to criminal prosecution under applicable laws.
 >
-> **L'auteur décline toute responsabilité en cas d'usage malveillant ou non autorisé.**
+> **The author declines all responsibility for malicious or unauthorized use.**
 
 ---
 
 ## 📜 License
 
-Ce projet est distribué sous **Licence MIT**. Voir le fichier [`LICENSE`](LICENSE) pour plus de détails.
+This project is distributed under the **MIT License**. See the [`LICENSE`](LICENSE) file for details.
 
 ```
 MIT License — Copyright (c) 2026 Amine Nahli
@@ -424,12 +429,10 @@ _Cybersecurity Enthusiast & AI Developer_
 
 <br/>
 
-### ⭐ Si ce projet vous a plu, laissez une étoile sur GitHub ! ⭐
+### ⭐ If you liked this project, leave a star on GitHub! ⭐
 
 <br/>
 
-**Made with ❤️ and ☕ by Amine Nahli**
-
-_March 2026 — Smart Network Mapper Project_
+_June 2026 — Smart Network Mapper v1.0_
 
 </div>
