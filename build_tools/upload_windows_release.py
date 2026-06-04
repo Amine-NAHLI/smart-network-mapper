@@ -13,9 +13,10 @@ REPO_ID = "aminenahli/snm-windows-portable"
 ZIP_NAME = "SNM_Windows_Portable_Complet.zip"
 
 # Chemins possibles du ZIP
+_base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CANDIDATES = [
-    os.path.join(os.path.dirname(__file__), "release", ZIP_NAME),
-    os.path.join(os.path.dirname(__file__), "release", "SNM_Windows_Portable", ZIP_NAME),
+    os.path.join(_base_dir, "release", ZIP_NAME),
+    os.path.join(_base_dir, "release", "SNM_Windows_Portable", ZIP_NAME),
 ]
 
 

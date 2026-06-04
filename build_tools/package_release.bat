@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 if not exist "dist\SNM\SNM.exe" (
     echo dist\SNM\SNM.exe introuvable. Lancez d'abord build.bat

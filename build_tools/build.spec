@@ -8,7 +8,8 @@ block_cipher = None
 customtkinter_datas = collect_data_files("customtkinter")
 
 # Empêcher PyInstaller d'embarquer des .pkl s'ils sont présents dans model/
-_model_dir = os.path.join(os.path.dirname(SPEC), "model")
+_base_dir = os.path.abspath(os.path.join(os.path.dirname(SPEC), ".."))
+_model_dir = os.path.join(_base_dir, "model")
 _model_datas = []
 if os.path.isdir(_model_dir):
     for name in os.listdir(_model_dir):
@@ -18,21 +19,29 @@ if os.path.isdir(_model_dir):
             )
 
 a = Analysis(
-    ["launcher.py"],
-    pathex=["."],
+    [os.path.join(_base_dir, "launcher.py")],
+    pathex=[_base_dir],
     binaries=[],
     datas=[
         *customtkinter_datas,
-        ("assets", "assets"),
-        ("reporter", "reporter"),
-        ("scanner", "scanner"),
+        (os.path.join(_base_dir, "assets"), "assets"),
+        (os.path.join(_base_dir, "reporter"), "reporter"),
+        (os.path.join(_base_dir, "scanner"), "scanner"),
         *_model_datas,
     ],
     hiddenimports=[
         "app",
-        "model_downloader_gui",
-        "model_download",
+        "model.model_downloader_gui",
+        "model.model_download",
         "model.predictor",
+        "gui",
+        "gui.constants",
+        "gui.db",
+        "gui.pages.dashboard",
+        "gui.pages.new_scan",
+        "gui.pages.results",
+        "gui.pages.history",
+        "gui.pages.about",
         "snm_paths",
         "reporter.html_generator",
         "sklearn.utils._typedefs",
@@ -63,7 +72,7 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=["pyi_rth_snm_stdio.py"],
+    runtime_hooks=[os.path.join(os.path.dirname(SPEC), "pyi_rth_snm_stdio.py")],
     excludes=[
         "outputs",
         "tests",

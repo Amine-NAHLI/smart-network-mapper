@@ -1,6 +1,6 @@
 @echo off
 REM Build SNM.exe — necessite ~2 Go libres sur le lecteur du projet
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 if not exist ".venv\Scripts\python.exe" (
     echo Creation du venv...
@@ -45,7 +45,7 @@ if exist dist (
 
 echo.
 echo Build PyInstaller en cours (2-5 min)...
-.venv\Scripts\pyinstaller.exe build.spec --noconfirm
+.venv\Scripts\pyinstaller.exe build_tools\build.spec --noconfirm
 if errorlevel 1 (
     echo.
     echo ========================================
