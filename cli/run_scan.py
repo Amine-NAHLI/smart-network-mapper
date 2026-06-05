@@ -15,6 +15,14 @@ Usage :
 """
 
 import os
+
+# Fix pour Scapy appelé depuis n8n (node.js child_process) sur Windows
+if os.name == 'nt':
+    if 'ProgramFiles' not in os.environ:
+        os.environ['ProgramFiles'] = os.environ.get('PROGRAMFILES', 'C:\\Program Files')
+    if 'ProgramFiles(x86)' not in os.environ:
+        os.environ['ProgramFiles(x86)'] = os.environ.get('PROGRAMFILES(X86)', 'C:\\Program Files (x86)')
+
 import sys
 import json
 import argparse
@@ -65,7 +73,7 @@ def handle_discover():
             "subnet": subnet,
             "hosts": hosts
         }
-        print(json.dumps(output, ensure_ascii=False, indent=2))
+        print(json.dumps(output, ensure_ascii=True, indent=2))
     except Exception as e:
         print(json.dumps({"error": f"Discovery failed: {str(e)}"}))
         sys.exit(1)
@@ -156,6 +164,16 @@ def handle_scan(target_ip, mode):
     try:
         generate_html_report(data, html_path)
         html_generated = True
+        
+        # Copie dans le dossier autorisé par n8n (.n8n-files) pour contourner l'erreur de permission
+        import shutil
+        n8n_dir = os.path.join(os.path.expanduser("~"), ".n8n-files")
+        os.makedirs(n8n_dir, exist_ok=True)
+        n8n_html_path = os.path.join(n8n_dir, "report.html")
+        shutil.copy(html_path, n8n_html_path)
+        
+        # On donne à n8n le chemin vers le fichier qu'il a le droit de lire
+        html_path = n8n_html_path
     except Exception as e:
         # Enregistré dans le JSON final pour n8n
         pass
@@ -170,7 +188,7 @@ def handle_scan(target_ip, mode):
         "html_generated": html_generated,
         "scan_data": data
     }
-    print(json.dumps(final_output, ensure_ascii=False, indent=2))
+    print(json.dumps(final_output, ensure_ascii=True, indent=2))
 
 def main():
     parser = argparse.ArgumentParser(description="Smart Network Mapper CLI Automation Wrapper")
