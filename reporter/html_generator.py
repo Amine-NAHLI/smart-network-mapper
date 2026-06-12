@@ -12,9 +12,14 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     ports = scan_data.get("ports", [])
     
     # Statistiques
-    total = len(ports)
+    total = scan_data.get("total_scanned", len(ports))
     open_p = len([p for p in ports if p.get("statut") == "ouvert"])
     vuln_p = len([p for p in ports if p.get("vulnerable") == 1])
+    safe_p = open_p - vuln_p
+    
+    # Si 0 port ouvert, c'est 100% sécurisé (au lieu de 0% avant)
+    safe_percent = int((safe_p / open_p) * 100) if open_p > 0 else 100
+    vuln_percent = int((vuln_p / open_p) * 100) if open_p > 0 else 0
     
     html_template = f"""
     <!DOCTYPE html>
@@ -111,10 +116,10 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
             </header>
 
             <div class="stats-grid">
-                <div class="stat-card"><span class="stat-val">{total}</span><span class="stat-label">Total Scan</span></div>
+                <div class="stat-card"><span class="stat-val">{total}</span><span class="stat-label">Ports Scannés</span></div>
                 <div class="stat-card"><span class="stat-val" style="color: var(--cyan)">{open_p}</span><span class="stat-label">Ouverts</span></div>
                 <div class="stat-card"><span class="stat-val" style="color: var(--red)">{vuln_p}</span><span class="stat-label">Vulnérables</span></div>
-                <div class="stat-card"><span class="stat-val" style="color: var(--green)">{open_p - vuln_p}</span><span class="stat-label">Sécurisés</span></div>
+                <div class="stat-card"><span class="stat-val" style="color: var(--green)">{safe_p}</span><span class="stat-label">Sécurisés</span></div>
             </div>
 
             <!-- SVG Chart Section -->
@@ -122,11 +127,11 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                 <svg width="200" height="200" viewBox="0 0 42 42" class="donut">
                     <circle class="donut-hole" cx="21" cy="21" r="15.91549430918954" fill="transparent"></circle>
                     <circle class="donut-ring" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#1f2937" stroke-width="3"></circle>
-                    <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="var(--green)" stroke-width="3" stroke-dasharray="{((open_p-vuln_p)/max(1,open_p))*100 if open_p > 0 else 0} {100 - (((open_p-vuln_p)/max(1,open_p))*100 if open_p > 0 else 0)}" stroke-dashoffset="25"></circle>
-                    <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="var(--red)" stroke-width="3" stroke-dasharray="{(vuln_p/max(1,open_p))*100 if open_p > 0 else 0} {100 - ((vuln_p/max(1,open_p))*100 if open_p > 0 else 0)}" stroke-dashoffset="{125 - (((open_p-vuln_p)/max(1,open_p))*100 if open_p > 0 else 0)}"></circle>
+                    <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="var(--green)" stroke-width="3" stroke-dasharray="{safe_percent} {100 - safe_percent}" stroke-dashoffset="25"></circle>
+                    <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="var(--red)" stroke-width="3" stroke-dasharray="{vuln_percent} {100 - vuln_percent}" stroke-dashoffset="{125 - safe_percent}"></circle>
                     <g class="chart-text">
                         <text x="50%" y="50%" class="chart-number" style="fill: white; font-size: 6px; font-weight: bold; text-anchor: middle; dominant-baseline: central;">
-                            {int(((open_p-vuln_p)/max(1,open_p))*100) if open_p > 0 else 0}%
+                            {safe_percent}%
                         </text>
                         <text x="50%" y="50%" class="chart-label" style="fill: var(--gray); font-size: 2px; text-anchor: middle; transform: translateY(4px);">
                             SAFE
@@ -153,8 +158,8 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         is_vuln = p.get("vulnerable") == 1
         row_class = "vuln-row" if is_vuln else ""
         label = p.get("label", "Unknown")
-        # Conversion en % pour l'affichage HTML
-        conf = round(p.get("confidence", 0) * 100, 1)
+        # Confidence déjà en % depuis run_scan.py (pas de re-multiplication)
+        conf = round(p.get("confidence", 0), 1)
         statut = p.get("statut", "ouvert")
         
         # Couleur IA
@@ -162,7 +167,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         
         html_template += f"""
                     <tr class="{row_class}">
-                        <td><b style="color: var(--cyan)">{p.get('port')}</b>/TCP</td>
+                        <td><b style="color: var(--cyan)">{p.get('port')}</b>/{p.get('protocole', 'TCP')}</td>
                         <td>{p.get('service', 'Inconnu')}</td>
                         <td style="color: var(--gray); font-size: 12px;">{p.get('version', 'N/A')}</td>
                         <td>{statut}</td>
@@ -176,11 +181,121 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                     </tr>
         """
         
+    # ── Section CVE OSINT ──────────────────────────────────────
+    # Collecter toutes les CVEs de tous les ports (en clonant les dicts pour éviter les conflits de références partagées)
+    all_cves = []
+    for p in ports:
+        port_num = p.get("port", 0)
+        service_name = p.get("service", "Inconnu")
+        port_cves = p.get("cves", [])
+        for cve in port_cves:
+            cve_copy = dict(cve)
+            cve_copy["_port"] = port_num
+            cve_copy["_service"] = service_name
+            all_cves.append(cve_copy)
+    
+    total_cves = len(all_cves)
+    critical_cves = len([c for c in all_cves if c.get("cvss_score", 0) >= 9.0])
+    high_cves = len([c for c in all_cves if 7.0 <= c.get("cvss_score", 0) < 9.0])
+
     html_template += """
                 </tbody>
             </table>
+    """
+
+    if all_cves:
+        html_template += f"""
+            <!-- ═══════════ SECTION OSINT / CVE ═══════════ -->
+            <div style="margin-top: 50px;">
+                <h2 style="color: var(--cyan); font-family: 'Courier New', monospace; letter-spacing: 2px; border-bottom: 1px solid #1f2937; padding-bottom: 10px;">
+                    🌐 ENRICHISSEMENT OSINT — CVEs CONNUES
+                </h2>
+                <p style="color: var(--gray); margin-bottom: 20px;">
+                    Données issues de la base <b style="color: var(--cyan);">NVD (NIST)</b> — National Vulnerability Database
+                </p>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 30px;">
+                    <div class="stat-card">
+                        <span class="stat-val">{total_cves}</span>
+                        <span class="stat-label">CVEs Trouvées</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" style="color: var(--red)">{critical_cves}</span>
+                        <span class="stat-label">Critiques (CVSS ≥ 9)</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" style="color: #ff8c00">{high_cves}</span>
+                        <span class="stat-label">Élevées (CVSS 7-9)</span>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>PORT</th>
+                            <th>CVE ID</th>
+                            <th>CVSS</th>
+                            <th>SÉVÉRITÉ</th>
+                            <th>DESCRIPTION</th>
+                            <th>DATE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+        for cve in all_cves:
+            cvss = cve.get("cvss_score", 0)
+            severity = cve.get("severity", "NONE")
+            cve_id = cve.get("cve_id", "N/A")
+            url = cve.get("url", "#")
+            desc = cve.get("description", "")
+            published = cve.get("published", "N/A")
+            port_num = cve.get("_port", "?")
+            service_name = cve.get("_service", "?")
+
+            # Couleur selon sévérité
+            if cvss >= 9.0:
+                sev_color = "var(--red)"
+                badge_class = "badge-vuln"
+            elif cvss >= 7.0:
+                sev_color = "#ff8c00"
+                badge_class = "badge-vuln\" style=\"background: #ff8c00"
+            elif cvss >= 4.0:
+                sev_color = "#ffd700"
+                badge_class = "badge-vuln\" style=\"background: #ffd700; color: #000"
+            else:
+                sev_color = "var(--green)"
+                badge_class = "badge-safe"
+
+            row_class = "vuln-row" if cvss >= 7.0 else ""
+
+            html_template += f"""
+                        <tr class="{row_class}">
+                            <td><b style="color: var(--cyan)">{port_num}</b><br><span style="color: var(--gray); font-size: 11px;">{service_name}</span></td>
+                            <td><a href="{url}" style="color: var(--cyan); text-decoration: none;" target="_blank">{cve_id}</a></td>
+                            <td style="color: {sev_color}; font-weight: bold; font-size: 18px;">{cvss}</td>
+                            <td><span class="status-badge {badge_class}">{severity}</span></td>
+                            <td style="font-size: 12px; color: var(--gray); max-width: 350px;">{desc}</td>
+                            <td style="color: var(--gray); font-size: 12px;">{published}</td>
+                        </tr>
+            """
+
+        html_template += """
+                    </tbody>
+                </table>
+            </div>
+        """
+    else:
+        html_template += """
+            <div style="margin-top: 50px; text-align: center; padding: 30px; background: var(--card-bg); border-radius: 8px; border: 1px solid #1f2937;">
+                <p style="color: var(--green); font-size: 18px; font-weight: bold;">✅ Aucune CVE connue trouvée sur NVD</p>
+                <p style="color: var(--gray);">Les services détectés ne présentent pas de vulnérabilités référencées dans la base NVD (NIST).</p>
+            </div>
+        """
+
+    html_template += """
             <footer style="margin-top: 50px; text-align: center; color: var(--gray); font-size: 12px;">
-                © 2026 Smart Network Mapper - Security Intelligence Platform
+                © 2026 Smart Network Mapper - Security Intelligence Platform<br>
+                <span style="font-size: 10px;">Données OSINT : NVD (NIST) — nvd.nist.gov</span>
             </footer>
         </div>
     </body>

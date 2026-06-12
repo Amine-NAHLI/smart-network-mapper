@@ -15,7 +15,7 @@ from datetime import datetime
 
 from gui.constants import *
 from scanner.host_discovery import scan_subnet
-from scanner.port_scanner import scan_tcp
+from scanner.port_scanner import scan_tcp, scan_udp_ports
 from scanner.device_info import get_hostname_dns, get_mac_arp
 from scanner.utils import detect_lan_config
 from model.predictor import predict
@@ -454,7 +454,31 @@ class NewScanPage(ctk.CTkFrame):
                 self.after(0, lambda p=pct: self._update_progress(p))
                 self.after(0, lambda entry=dict(r): self._append_log(entry))
 
-        self.scan_results = sorted(enriched, key=lambda x: x.get("port", 0))
+        # Scan UDP sur les ports critiques (DNS, SNMP, DHCP, NTP…)
+        udp_results = scan_udp_ports(ip)
+        for r in udp_results:
+            if r.get("statut") == "ouvert":
+                try:
+                    pred = predict(
+                        port=r["port"],
+                        version_string=r.get("version", ""),
+                        service=r.get("service", ""),
+                        protocol="udp",
+                    )
+                    r["vulnerable"] = pred["vulnerable"]
+                    r["confidence"] = pred["confidence"]
+                    r["label"] = pred["label"]
+                except Exception:
+                    r["vulnerable"] = 0
+                    r["confidence"] = 0.0
+                    r["label"] = "—"
+                enriched.append(r)
+                self.after(0, lambda entry=dict(r): self._append_log(entry))
+
+        self.scan_results = sorted(
+            enriched,
+            key=lambda x: (x.get("protocole", "TCP"), x.get("port", 0)),
+        )
         self.after(0, self._on_scan_complete)
 
     def _update_progress(self, pct):
@@ -470,18 +494,20 @@ class NewScanPage(ctk.CTkFrame):
         ver    = r.get("version", "")
         conf   = r.get("confidence", 0)
 
+        proto = r.get("protocole", "TCP")
         if statut == "ouvert":
+            conf_pct = conf * 100 if conf <= 1 else conf
             if r.get("vulnerable") == 1:
                 color = RED
-                txt = (f"[OPEN]   port {port:<6} {svc:<10} {ver:<18}"
-                       f" → VULNÉRABLE ({conf*100:.1f}%)")
+                txt = (f"[OPEN/{proto}] port {port:<6} {svc:<10} {ver:<18}"
+                       f" → VULNÉRABLE ({conf_pct:.1f}%)")
             else:
                 color = GREEN
-                txt = (f"[OPEN]   port {port:<6} {svc:<10} {ver:<18}"
-                       f" → SAFE ({conf*100:.1f}%)")
+                txt = (f"[OPEN/{proto}] port {port:<6} {svc:<10} {ver:<18}"
+                       f" → SAFE ({conf_pct:.1f}%)")
         else:
             color = GRAY
-            txt   = f"[{statut.upper():<7}] port {port:<6} {svc:<10}"
+            txt   = f"[{statut.upper():<7}/{proto}] port {port:<6} {svc:<10}"
 
         ctk.CTkLabel(self.log_frame, text=txt, font=("Courier New", 10),
                      text_color=color, anchor="w").pack(fill="x", padx=4, pady=1)
@@ -524,14 +550,16 @@ class NewScanPage(ctk.CTkFrame):
     def _save_result(self, ip, results, duration) -> str:
         ensure_outputs_dir()
         outputs_dir = get_outputs_dir()
+        open_only = [r for r in results if r.get("statut") == "ouvert"]
         data = {
             "cible":            ip,
             "date":             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "duration_seconds": duration,
+            "total_scanned":    len(results),
             "ports": [
                 {
                     "port":       r.get("port"),
-                    "protocole":  "TCP",
+                    "protocole":  r.get("protocole", "TCP"),
                     "statut":     r.get("statut"),
                     "service":    r.get("service", ""),
                     "version":    r.get("version", ""),
@@ -539,7 +567,7 @@ class NewScanPage(ctk.CTkFrame):
                     "confidence": r.get("confidence", 0.0),
                     "label":      r.get("label", "—"),
                 }
-                for r in results
+                for r in open_only
             ],
         }
 
