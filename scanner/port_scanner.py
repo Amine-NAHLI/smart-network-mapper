@@ -1,12 +1,27 @@
 import socket
 import concurrent.futures
 import re
+import ssl
 
-# Récupérer le nom du service
-def get_service(port: int) -> str:
+# Ports UDP critiques scannés en mode rapide (DNS, SNMP, DHCP, NTP, etc.)
+TOP_UDP_PORTS = [53, 67, 68, 69, 123, 161, 162, 500, 514, 1900]
+
+# Sondes UDP par port (payload minimal pour provoquer une réponse)
+UDP_PROBES = {
+    53: (
+        b"\xaa\xaa\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00"
+        b"\x07example\x03com\x00\x00\x01\x00\x01"
+    ),
+    123: b"\x1b" + 47 * b"\x00",
+    161: b"\x30\x26\x02\x01\x01\x04\x06public\xa0\x19\x02\x04"
+           b"\x00\x00\x00\x00\x02\x01\x00\x02\x01\x00\x30\x0b\x30"
+           b"\x09\x06\x05\x2b\x06\x01\x02\x01\x05\x00",
+}
+
+
+def get_service(port: int, protocol: str = "tcp") -> str:
     try:
-        # On essaie d'obtenir le nom du service associé au port
-        service = socket.getservbyport(port, "tcp")
+        service = socket.getservbyport(port, protocol)
         return service.upper()
     except OSError:
         return "INCONNU"
@@ -20,6 +35,7 @@ def grab_banner(ip: str, port: int, timeout=2.5) -> str:
         80:   b"HEAD / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n",
         8080: b"HEAD / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n",
         443:  b"HEAD / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n",
+        8443: b"HEAD / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n",
         6379: b"INFO\r\n",                                # Redis
         3306: b"\x07\x00\x00\x01\x00\x00\x00",           # MySQL Client Init
         21:   b"HELP\r\n",                                # FTP
@@ -32,6 +48,13 @@ def grab_banner(ip: str, port: int, timeout=2.5) -> str:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)
             s.connect((ip, port))
+            
+            # Ajout de la couche SSL/TLS pour les ports sécurisés
+            if port in [443, 8443, 993, 995, 465]:
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                s = context.wrap_socket(s, server_hostname=ip)
             
             # 1. On vérifie si le service parle de lui-même (SSH, FTP, etc.)
             try:
@@ -51,6 +74,8 @@ def grab_banner(ip: str, port: int, timeout=2.5) -> str:
             banner = s.recv(1024).decode('utf-8', errors='ignore').strip()
             return banner if banner else "Réponse vide"
 
+    except ssl.SSLError:
+        return "ERREUR SSL (Service non TLS ou cert invalide)"
     except Exception as e:
         return f"ERREUR: {type(e).__name__}"
 
@@ -63,22 +88,38 @@ def extract_version(banner: str) -> str:
         return "Non détectée"
         
     try:
-        # 1. Cas particulier du WEB : on cherche la ligne "Server:"
-        if "HTTP/" in banner:
-            server_match = re.search(r"Server: ([\w\-_]+)[/ \-]([\d]+\.[\d]+[\.\d\w\-]*)", banner, re.IGNORECASE)
-            if server_match:
-                return f"{server_match.group(1)}/{server_match.group(2)}"
+        # Nettoyage spécifique pour SSH (ex: "SSH-2.0-dropbear_2020.81" -> "dropbear_2020.81")
+        if banner.startswith("SSH-"):
+            banner = re.sub(r"^SSH-\d+\.\d+-", "", banner)
 
-        # 2. Pattern général
-        pattern = r'([\w\-_]+)[/ \-]([\d]+\.[\d]+[\.\d\w\-]*)'
+        # 1. Cas particulier du WEB : on cherche la ligne "Server:"
+        if "HTTP/" in banner or "Server:" in banner:
+            # Gère les serveurs sans version (ex: "Server: thttpd") ou avec version (ex: "Server: Apache/2.4.58")
+            server_match = re.search(r"Server:\s*([\w\-_]+)(?:[/ \-_]([\d]+\.[\d]+[\.\d\w\-]*))?", banner, re.IGNORECASE)
+            if server_match:
+                name = server_match.group(1)
+                ver = server_match.group(2)
+                return f"{name}/{ver}" if ver else name
+
+        # 2. Cas spécifique de SSH / Dropbear
+        ssh_match = re.search(r"OpenSSH[_-]([\d]+\.[\d]+[\w\.\-]*)", banner, re.IGNORECASE)
+        if ssh_match:
+            return f"OpenSSH/{ssh_match.group(1)}"
+        
+        dropbear_match = re.search(r"dropbear[_-]([\d]+\.[\d]+[\w\.\-]*)", banner, re.IGNORECASE)
+        if dropbear_match:
+            return f"dropbear/{dropbear_match.group(1)}"
+
+        # 3. Pattern général (gère le _, le -, le / et l'espace comme séparateurs)
+        pattern = r'([a-zA-Z][\w\-]*)[/ \-_v]+([\d]+\.[\d]+[\.\d\w\-]*)'
         matches = re.finditer(pattern, banner)
         
         for match in matches:
             name = match.group(1)
             ver = match.group(2)
             
-            # On ignore les versions de protocole pur
-            if name.upper() in ["HTTP", "SSH", "TCP"]:
+            # On ignore les versions de protocole pur et les noms d'OS
+            if name.upper() in ["HTTP", "SSH", "TCP", "UBUNTU", "DEBIAN", "CENTOS"]:
                 continue
             
             return f"{name}/{ver}"
@@ -104,62 +145,145 @@ def scan_tcp(ip: str, port: int) -> dict:
             
             return {
                 "port": port,
+                "protocole": "TCP",
                 "statut": statut,
                 "service": service,
                 "banner": banner,
-                "version": version
+                "version": version,
             }
     except ConnectionRefusedError:
         return {
             "port": port,
+            "protocole": "TCP",
             "statut": "fermé",
             "service": get_service(port),
             "banner": "FERMÉ / pas de réponse",
-            "version": "N/A"
+            "version": "N/A",
         }
     except socket.timeout:
         return {
             "port": port,
+            "protocole": "TCP",
             "statut": "filtré/timeout",
             "service": get_service(port),
             "banner": "ERREUR: Timeout",
-            "version": "N/A"
+            "version": "N/A",
         }
     except Exception as e:
         return {
             "port": port,
+            "protocole": "TCP",
             "statut": "erreur",
             "service": get_service(port),
             "banner": f"ERREUR: {type(e).__name__}",
-            "version": "N/A"
+            "version": "N/A",
         }
 
-def scan_ports(ip: str, ports: list, progress_callback=None) -> list:
+def scan_udp(ip: str, port: int, timeout: float = 2.0) -> dict:
     """
-    Scanne une liste de ports en multi-threading avec ThreadPoolExecutor.
+    Teste un port UDP : envoie une sonde et attend une réponse.
+    UDP sans réponse = fermé ou filtré (statut 'fermé/filtré').
+    """
+    service = get_service(port, "udp")
+    probe = UDP_PROBES.get(port, b"\x00")
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(timeout)
+            s.sendto(probe, (ip, port))
+            try:
+                data, _ = s.recvfrom(1024)
+                banner = data[:200].decode("utf-8", errors="replace").strip()
+                if not banner:
+                    banner = f"Réponse UDP ({len(data)} octets)"
+                return {
+                    "port": port,
+                    "protocole": "UDP",
+                    "statut": "ouvert",
+                    "service": service,
+                    "banner": banner,
+                    "version": extract_version(banner) if banner else "Non détectée",
+                }
+            except socket.timeout:
+                return {
+                    "port": port,
+                    "protocole": "UDP",
+                    "statut": "fermé/filtré",
+                    "service": service,
+                    "banner": "Pas de réponse UDP",
+                    "version": "N/A",
+                }
+    except Exception as e:
+        return {
+            "port": port,
+            "protocole": "UDP",
+            "statut": "erreur",
+            "service": service,
+            "banner": f"ERREUR: {type(e).__name__}",
+            "version": "N/A",
+        }
+
+
+def scan_udp_ports(ip: str, ports: list | None = None, progress_callback=None) -> list:
+    """Scanne une liste de ports UDP en multi-threading."""
+    if ports is None:
+        ports = TOP_UDP_PORTS
+
+    resultats = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        futures = {executor.submit(scan_udp, ip, port): port for port in set(ports)}
+        for future in concurrent.futures.as_completed(futures):
+            port = futures[future]
+            try:
+                resultats.append(future.result())
+            except Exception as e:
+                resultats.append({
+                    "port": port,
+                    "protocole": "UDP",
+                    "statut": "erreur",
+                    "service": get_service(port, "udp"),
+                    "banner": f"ERREUR: {type(e).__name__}",
+                    "version": "N/A",
+                })
+            if progress_callback:
+                progress_callback()
+
+    resultats.sort(key=lambda x: x["port"])
+    return resultats
+
+
+def scan_ports(ip: str, ports: list, progress_callback=None, include_udp: bool = False,
+               udp_ports: list | None = None) -> list:
+    """
+    Scanne une liste de ports TCP (et optionnellement UDP) en multi-threading.
     """
     resultats = []
-    
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=200) as executor:
         futures = {executor.submit(scan_tcp, ip, port): port for port in set(ports)}
-        
+
         for future in concurrent.futures.as_completed(futures):
             try:
                 res = future.result()
+                res.setdefault("protocole", "TCP")
                 resultats.append(res)
             except Exception as e:
                 port = futures[future]
                 resultats.append({
                     "port": port,
+                    "protocole": "TCP",
                     "statut": "erreur",
                     "service": get_service(port),
                     "banner": f"ERREUR: {type(e).__name__}",
-                    "version": "N/A"
+                    "version": "N/A",
                 })
-            
+
             if progress_callback:
                 progress_callback()
-    
-    # Tri par numéro de port pour une lecture plus claire (style Nmap)
-    resultats.sort(key=lambda x: x["port"])
+
+    if include_udp:
+        udp_results = scan_udp_ports(ip, udp_ports, progress_callback=progress_callback)
+        resultats.extend(udp_results)
+
+    resultats.sort(key=lambda x: (x.get("protocole", "TCP"), x["port"]))
     return resultats

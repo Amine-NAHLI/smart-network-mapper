@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from scanner.port_scanner import get_service, scan_tcp, scan_ports
+from scanner.port_scanner import get_service, scan_tcp, scan_ports, scan_udp
 
 class TestGetService(unittest.TestCase):
     """Tests pour la fonction get_service"""
@@ -16,11 +16,10 @@ class TestGetService(unittest.TestCase):
 class TestScanTcp(unittest.TestCase):
     """Tests pour la fonction scan_tcp"""
 
+    @patch("scanner.port_scanner.grab_banner", return_value="Server: Apache/2.4")
     @patch("scanner.port_scanner.socket.socket")
-    def test_port_ouvert(self, mock_socket_class):
-        # Simuler connect_ex qui retourne 0 → port ouvert
+    def test_port_ouvert(self, mock_socket_class, _mock_banner):
         mock_socket = MagicMock()
-        mock_socket.connect_ex.return_value = 0
         mock_socket_class.return_value.__enter__.return_value = mock_socket
 
         result = scan_tcp("192.168.1.1", 80)
@@ -31,9 +30,8 @@ class TestScanTcp(unittest.TestCase):
 
     @patch("scanner.port_scanner.socket.socket")
     def test_port_ferme(self, mock_socket_class):
-        # Simuler connect_ex qui retourne 1 → port fermé
         mock_socket = MagicMock()
-        mock_socket.connect_ex.return_value = 1
+        mock_socket.connect.side_effect = ConnectionRefusedError()
         mock_socket_class.return_value.__enter__.return_value = mock_socket
 
         result = scan_tcp("192.168.1.1", 9999)
@@ -43,13 +41,12 @@ class TestScanTcp(unittest.TestCase):
 
     @patch("scanner.port_scanner.socket.socket")
     def test_exception_retourne_erreur(self, mock_socket_class):
-        # Simuler une exception réseau → doit retourner statut erreur sans planter
         mock_socket_class.side_effect = Exception("Erreur réseau simulée")
 
         result = scan_tcp("192.168.1.1", 80)
 
         self.assertEqual(result["statut"], "erreur")
-        self.assertIn("erreur", result)
+        self.assertIn("ERREUR", result["banner"])
 
 class TestScanPorts(unittest.TestCase):
     """Tests pour la fonction scan_ports"""
@@ -87,6 +84,17 @@ class TestScanPorts(unittest.TestCase):
 
         scan_ports("192.168.1.1", [80, 443, 22], progress_callback=callback)
         self.assertEqual(compteur["valeur"], 3)
+
+class TestScanUdp(unittest.TestCase):
+    @patch("scanner.port_scanner.socket.socket")
+    def test_udp_open(self, mock_socket_class):
+        mock_sock = MagicMock()
+        mock_sock.recvfrom.return_value = (b"response", ("1.1.1.1", 53))
+        mock_socket_class.return_value.__enter__.return_value = mock_sock
+        result = scan_udp("1.1.1.1", 53)
+        self.assertEqual(result["protocole"], "UDP")
+        self.assertEqual(result["statut"], "ouvert")
+
 
 if __name__ == "__main__":
     unittest.main() 
