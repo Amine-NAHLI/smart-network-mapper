@@ -8,6 +8,7 @@ customtkinter
 colorama
 tqdm
 
+
 # Machine Learning & Data
 pandas
 numpy
