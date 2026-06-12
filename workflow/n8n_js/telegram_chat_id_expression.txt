@@ -1,0 +1,3 @@
+Expression Chat ID universelle (message OU bouton) — à coller dans n8n :
+
+={{ $('Telegram Bot (Unique)').item.json.message?.chat?.id || $('Telegram Bot (Unique)').item.json.callback_query?.message?.chat?.id }}

@@ -1,0 +1,514 @@
+{
+  "name": "SNM - Smart Network Mapper (Template)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Bot (Unique)",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        144,
+        160
+      ],
+      "id": "snm-telegram-trigger",
+      "credentials": {
+        "telegramApi": {
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.message ? true : false }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Message ou Bouton ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        352,
+        160
+      ],
+      "id": "snm-if-message-or-button"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\n\nfunction chatId() {\n  const t = $('Telegram Bot (Unique)').item.json;\n  return String(t.message?.chat?.id || t.callback_query?.message?.chat?.id || '');\n}\n\nfunction fail(msg, phase) {\n  return [{ json: { success: false, error_message: msg, telegram_chat_id: chatId(), phase } }];\n}\n\ntry {\n  let stdout;\n  try {\n    stdout = execSync('python cli/run_scan.py --discover', {\n      encoding: 'utf-8',\n      maxBuffer: 10 * 1024 * 1024,\n    });\n  } catch (e) {\n    const out = (e.stdout || '').trim();\n    if (out) {\n      try {\n        const parsed = JSON.parse(out);\n        if (parsed.error || parsed.success === false) {\n          return fail(parsed.error_message || parsed.error || 'Erreur découverte', 'discover');\n        }\n      } catch (_) { /* ignore parse error */ }\n    }\n    const detail = (e.stderr || e.message || '').trim();\n    return fail(detail || 'Erreur lors de la découverte réseau', 'discover');\n  }\n\n  const data = JSON.parse(stdout.trim());\n  if (data.error || data.success === false) {\n    return fail(data.error_message || data.error || 'Erreur découverte', 'discover');\n  }\n  if (!data.hosts || data.hosts.length === 0) {\n    return fail('Aucun appareil actif trouvé sur le réseau local.', 'discover');\n  }\n\n  const buttons = data.hosts.map((host) => [{\n    text: `🎯 ${host.ip}`,\n    callback_data: host.ip,\n  }]);\n\n  return [{\n    json: {\n      success: true,\n      ...data,\n      telegram_buttons: { inline_keyboard: buttons },\n      message_text:\n        `🔍 **Scan Réseau Terminé**\\nInterface : ${data.interface}\\n` +\n        `Réseau : ${data.subnet}\\nAppareils trouvés : ${data.hosts.length}\\n\\n` +\n        `👇 **Choisissez une cible à scanner en profondeur :**`,\n    },\n  }];\n} catch (e) {\n  return fail(e.message || String(e), 'discover');\n}\n"
+      },
+      "name": "Découverte Réseau",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        0
+      ],
+      "id": "snm-discover-network"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $('Telegram Bot (Unique)').item.json.message.chat.id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.message_text }}"
+            },
+            {
+              "name": "reply_markup",
+              "value": "={{ JSON.stringify($json.telegram_buttons) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Envoyer Boutons",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "snm-send-buttons"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { exec } = require('child_process');\n\nfunction chatId() {\n  const t = $('Telegram Bot (Unique)').item.json;\n  return String(t.callback_query?.message?.chat?.id || t.message?.chat?.id || '');\n}\n\nfunction fail(msg, phase) {\n  return [{ json: { success: false, error_message: msg, telegram_chat_id: chatId(), phase } }];\n}\n\nconst callbackData = $('Telegram Bot (Unique)').item.json.callback_query.data;\nconst parts = callbackData.split(':');\nconst mode = parts[0].replace('mode_', '');\nconst target_ip = parts[1];\n\nif (!target_ip) {\n  return fail('IP cible invalide ou manquante.', 'scan');\n}\n\nreturn new Promise((resolve) => {\n  exec(\n    `python cli/run_scan.py --target ${target_ip} --mode ${mode}`,\n    { encoding: 'utf-8', maxBuffer: 20 * 1024 * 1024 },\n    (error, stdout, stderr) => {\n      const out = (stdout || '').trim();\n\n      if (out) {\n        try {\n          const data = JSON.parse(out);\n          if (data.error || data.success === false) {\n            return resolve(fail(data.error_message || data.error || 'Erreur scan', 'scan'));\n          }\n          return resolve([{ json: { success: true, ...data } }]);\n        } catch (e) {\n          return resolve(fail(`Réponse invalide du scanner : ${out.slice(0, 500)}`, 'scan'));\n        }\n      }\n\n      if (error) {\n        const detail = (stderr || error.message || '').trim();\n        return resolve(fail(detail || 'Erreur lors du scan de sécurité', 'scan'));\n      }\n\n      return resolve(fail('Le scanner n\\'a renvoyé aucune donnée.', 'scan'));\n    },\n  );\n});\n"
+      },
+      "name": "Scanner IP (IA)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        320
+      ],
+      "id": "snm-scan-target"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.html_report_path }}",
+        "options": {}
+      },
+      "name": "Lire HTML",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        320
+      ],
+      "id": "snm-read-html"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Telegram Bot (Unique)').item.json.callback_query.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=✅ Audit terminé pour l'IP : {{ $('Telegram Bot (Unique)').item.json.callback_query.data }}\n\n🤖 Notre IA (Random Forest) a analysé les ports. Le rapport détaillé est ci-joint :"
+        }
+      },
+      "name": "Envoyer Rapport Final",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1728,
+        320
+      ],
+      "id": "snm-send-html-report",
+      "credentials": {
+        "telegramApi": {
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "mode_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notStartsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "mode_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        368
+      ],
+      "id": "snm-switch",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.callback_query.message.chat.id }}\",\n  \"text\": \"⚡ Choisissez le type de scan pour l'IP {{ $json.callback_query.data }} :\",\n  \"reply_markup\": {\n    \"inline_keyboard\": [\n      [\n        {\n          \"text\": \"⚡ Scan Rapide (22 ports TCP + UDP critiques)\",\n          \"callback_data\": \"mode_fast:{{ $json.callback_query.data }}\"\n        }\n      ],\n      [\n        {\n          \"text\": \"🔍 Scan Complet (65 535 ports)\",\n          \"callback_data\": \"mode_full:{{ $json.callback_query.data }}\"\n        }\n      ]\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "name": "Envoyer Choix Mode",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        832,
+        176
+      ],
+      "id": "snm-send-mode-choice"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.callback_query.message.chat.id }}\",\n  \"text\": \"⏳ **Scan de sécurité en cours...**\\nLe traitement a démarré et peut prendre entre 30 secondes et 1 minute. Veuillez patienter, je vous envoie le rapport dès qu'il est prêt !\"\n}\n",
+        "options": {}
+      },
+      "name": "Message Attente Scan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1056,
+        320
+      ],
+      "id": "snm-wait-scan"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.message.chat.id }}\",\n  \"text\": \"🔍 **Découverte du réseau local en cours...**\\nJe recherche toutes les machines actives connectées à votre WiFi. Veuillez patienter quelques instants.\"\n}\n",
+        "options": {}
+      },
+      "name": "Message Attente Découverte",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        576,
+        32
+      ],
+      "id": "snm-wait-discover"
+    },
+    {
+      "parameters": {
+        "jsCode": "const scan = $input.first().json;\nconst chunks = (scan.ai_report_chunks && scan.ai_report_chunks.length > 0)\n  ? scan.ai_report_chunks\n  : (scan.ai_report_text ? [scan.ai_report_text] : ['Aucun rapport IA disponible.']);\nconst chatId = $('Telegram Bot (Unique)').item.json.callback_query.message.chat.id;\n\nreturn chunks.map((text, i) => ({\n  json: {\n    ...scan,\n    ai_report_text: text,\n    telegram_chat_id: String(chatId),\n    chunk_index: i + 1,\n    chunk_total: chunks.length\n  }\n}));\n"
+      },
+      "name": "Découper Rapport IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        512
+      ],
+      "id": "snm-split-ai-report"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Bot (Unique)').item.json.message?.chat?.id || $('Telegram Bot (Unique)').item.json.callback_query?.message?.chat?.id }}",
+        "text": "={{ $json.ai_report_text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        512
+      ],
+      "id": "snm-send-ai-report",
+      "name": "Envoyer Rapport IA",
+      "credentials": {
+        "telegramApi": {
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.error_message || '' }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Découverte OK ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ],
+      "id": "snm-if-discover-ok"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.error_message || '' }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Scan OK ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        320
+      ],
+      "id": "snm-if-scan-ok"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Bot (Unique)').item.json.message?.chat?.id || $('Telegram Bot (Unique)').item.json.callback_query?.message?.chat?.id }}",
+        "text": "=❌ Erreur SNM ({{ $json.phase || 'inconnue' }})\n\n{{ $json.error_message }}\n\nRéessayez ou vérifiez Python et les dépendances.",
+        "additionalFields": {}
+      },
+      "name": "Envoyer Erreur",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        640
+      ],
+      "id": "snm-send-error",
+      "credentials": {
+        "telegramApi": {
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Bot (Unique)": {
+      "main": [
+        [
+          {
+            "node": "Message ou Bouton ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message ou Bouton ?": {
+      "main": [
+        [
+          {
+            "node": "Message Attente Découverte",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Découverte Réseau": {
+      "main": [
+        [
+          {
+            "node": "Découverte OK ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scanner IP (IA)": {
+      "main": [
+        [
+          {
+            "node": "Scan OK ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Découper Rapport IA": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Rapport IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire HTML": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Choix Mode",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message Attente Scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Attente Scan": {
+      "main": [
+        [
+          {
+            "node": "Scanner IP (IA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Attente Découverte": {
+      "main": [
+        [
+          {
+            "node": "Découverte Réseau",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Découverte OK ?": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Boutons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envoyer Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan OK ?": {
+      "main": [
+        [
+          {
+            "node": "Lire HTML",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Découper Rapport IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envoyer Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
