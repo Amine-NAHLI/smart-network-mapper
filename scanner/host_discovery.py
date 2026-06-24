@@ -148,11 +148,13 @@ def tcp_ping(ip: str, ports=None, timeout=1) -> dict:
         except Exception:
             continue
 
+    os_name = "Unknown"
     if alive:
         try:
             device = get_device_info(ip)
             hostname = device.get("hostname", "Unknown")
             mac = device.get("mac", "Unknown")
+            os_name = device.get("os", "Unknown")
         except Exception:
             pass
 
@@ -160,6 +162,7 @@ def tcp_ping(ip: str, ports=None, timeout=1) -> dict:
         "ip": ip,
         "hostname": hostname,
         "mac": mac,
+        "os": os_name,
         "alive": alive,
         "latency": round(latency, 2) if latency is not None else None,
         "open_port": open_port
@@ -169,7 +172,7 @@ def tcp_ping(ip: str, ports=None, timeout=1) -> dict:
 # ──────────────────────────────────────────────────────────────
 # Fonction Principale : Découverte Hybride (ARP + TCP)
 # ──────────────────────────────────────────────────────────────
-def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None):
+def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None, progress_callback=None):
     """
     Découverte réseau hybride en 2 phases :
       Phase 1 — Scan ARP (Scapy) : Détecte TOUS les appareils du réseau local
@@ -202,9 +205,11 @@ def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None):
 
         # Enrichir avec hostname et OS
         hostname = "Unknown"
+        os_name = "Unknown"
         try:
             device = get_device_info(ip)
             hostname = device.get("hostname", "Unknown")
+            os_name = device.get("os", "Unknown")
         except Exception:
             pass
 
@@ -212,6 +217,7 @@ def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None):
             "ip": ip,
             "hostname": hostname,
             "mac": mac,
+            "os": os_name,
             "alive": True,
             "latency": None,
             "open_port": None
@@ -224,7 +230,15 @@ def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None):
 
     # ── Phase 2 : TCP Ping (complément — trouve les appareils manqués par ARP) ──
     ips = parse_subnet(subnet)
+    total_ips = len(ips)
+    
+    # On considère que la phase ARP représente 10% du travail, ou a scanné instantanément
+    if progress_callback:
+        progress_callback(min(total_ips, len(found_ips) + int(total_ips * 0.1)), total_ips)
+
     remaining_ips = [ip for ip in ips if ip not in found_ips]
+    scanned_count = total_ips - len(remaining_ips)
+
     if remaining_ips:
         sys.stderr.write(
             f"[DISCOVERY] Phase 2 : TCP Ping sur {len(remaining_ips)} IP restantes...\n"
@@ -237,6 +251,10 @@ def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None):
 
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
+                scanned_count += 1
+                if progress_callback:
+                    progress_callback(scanned_count, total_ips)
+
                 if result.get("alive") and result["ip"] not in found_ips:
                     found_ips.add(result["ip"])
                     alive_hosts.append(result)

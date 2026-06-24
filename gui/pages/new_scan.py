@@ -143,6 +143,12 @@ class NewScanPage(ctk.CTkFrame):
                                               text_color=CYAN_ACCENT)
         self.discovery_status.pack(anchor="w", padx=16, pady=(0, 4))
 
+        self.discovery_progress = ctk.CTkProgressBar(box, mode="determinate",
+                                                      fg_color=BORDER_COLOR,
+                                                      progress_color=CYAN_ACCENT,
+                                                      corner_radius=2, height=4)
+        self.discovery_progress.set(0)
+
         self.hosts_table_frame = ctk.CTkScrollableFrame(box, fg_color=NAVY_CARD,
                                                          height=180, corner_radius=6)
         self.hosts_table_frame.pack(fill="x", padx=16, pady=(0, 16))
@@ -160,13 +166,20 @@ class NewScanPage(ctk.CTkFrame):
             messagebox.showwarning("Missing Input", "Enter a network CIDR first.")
             return
         self.discovery_status.configure(text="●  Discovering hosts...")
+        self.discovery_progress.set(0)
+        self.discovery_progress.pack(fill="x", padx=16, pady=(0, 8))
         for w in self.hosts_table_frame.winfo_children():
             w.destroy()
         threading.Thread(target=self._run_host_discovery, args=(cidr,), daemon=True).start()
 
+    def _update_discovery_progress(self, current, total):
+        pct = current / max(1, total)
+        self.after(0, lambda p=pct: self.discovery_progress.set(p))
+        self.after(0, lambda c=current, t=total: self.discovery_status.configure(text=f"●  Discovering hosts... ({c}/{t})"))
+
     def _run_host_discovery(self, cidr):
         try:
-            hosts = scan_subnet(cidr)
+            hosts = scan_subnet(cidr, progress_callback=self._update_discovery_progress)
             alive = [h for h in hosts if h.get("alive")]
         except Exception as e:
             self.after(0, lambda msg=str(e): self.discovery_status.configure(
@@ -177,6 +190,7 @@ class NewScanPage(ctk.CTkFrame):
 
     def _on_hosts_discovered(self):
         hosts = self.discovered_hosts
+        self.discovery_progress.pack_forget()
         self.discovery_status.configure(
             text=f"●  Found {len(hosts)} alive host(s)." if hosts else "●  No alive hosts found.",
             text_color=GREEN_SUCCESS if hosts else AMBER_WARNING)

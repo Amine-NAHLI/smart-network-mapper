@@ -1,5 +1,9 @@
 import sys #arreter le prog proprement au cas d'erreur
 import os #cree le dossier des outpus si il nexsite pas
+
+# Ajouter le dossier racine au chemin pour trouver le module 'scanner'
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json #pour sauvegarder les resultats JSON
 # import requests (supprimé car l'IA est maintenant appelée localement)
 from datetime import datetime #POUR LA DATE ET LHEURE DES RESULTATS

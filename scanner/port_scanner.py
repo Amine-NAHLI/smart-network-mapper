@@ -18,7 +18,6 @@ UDP_PROBES = {
            b"\x09\x06\x05\x2b\x06\x01\x02\x01\x05\x00",
 }
 
-
 def get_service(port: int, protocol: str = "tcp") -> str:
     try:
         service = socket.getservbyport(port, protocol)
