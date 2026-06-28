@@ -10,7 +10,7 @@ class TestGetService(unittest.TestCase):
         self.assertEqual(result, "HTTP")
 
     def test_port_inconnu(self):
-        result = get_service(19999)
+        result = get_service(59999)
         self.assertEqual(result, "INCONNU")
 
 class TestScanTcp(unittest.TestCase):
