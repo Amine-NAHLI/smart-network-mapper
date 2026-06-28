@@ -32,30 +32,14 @@ DELAY_BETWEEN_REQUESTS = 6  # Pause entre requêtes (respect rate limit NVD)
 MAX_CVE_PER_SERVICE = 5     # Nombre max de CVEs à retourner par service
 
 
-# ──────────────────────────────────────────────────────────────
-# Mapping service → mot-clé de recherche NVD
-# ──────────────────────────────────────────────────────────────
-SERVICE_KEYWORDS = {
-    "ssh":        "openssh",
-    "http":       "apache http",
-    "https":      "apache http",
-    "ftp":        "vsftpd",
-    "smtp":       "postfix",
-    "mysql":      "mysql",
-    "ms-sql":     "microsoft sql server",
-    "rdp":        "remote desktop",
-    "smb":        "samba",
-    "dns":        "bind dns",
-    "telnet":     "telnet",
-    "vnc":        "vnc",
-    "redis":      "redis",
-    "postgres":   "postgresql",
-    "mongodb":    "mongodb",
-    "nginx":      "nginx",
-    "iis":        "microsoft iis",
-    "tomcat":     "apache tomcat",
-    "elastic":    "elasticsearch",
-}
+try:
+    from .iana_manager import SERVICE_KEYWORDS
+except ImportError:
+    try:
+        from scanner.iana_manager import SERVICE_KEYWORDS
+    except ImportError:
+        from iana_manager import SERVICE_KEYWORDS
+
 
 
 def _extract_version_number(version_string):

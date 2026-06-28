@@ -3,6 +3,14 @@ import concurrent.futures
 import re
 import ssl
 
+try:
+    from .iana_manager import get_service_name
+except ImportError:
+    try:
+        from scanner.iana_manager import get_service_name
+    except ImportError:
+        from iana_manager import get_service_name
+
 # Ports UDP critiques scannés en mode rapide (DNS, SNMP, DHCP, NTP, etc.)
 TOP_UDP_PORTS = [53, 67, 68, 69, 123, 161, 162, 500, 514, 1900]
 
@@ -19,11 +27,18 @@ UDP_PROBES = {
 }
 
 def get_service(port: int, protocol: str = "tcp") -> str:
+    # Priorité 1 : résolution OS native (compatibilité existante)
     try:
         service = socket.getservbyport(port, protocol)
         return service.upper()
     except OSError:
-        return "INCONNU"
+        pass
+    # Priorité 2 : enrichissement IANA pour les ports inconnus de l'OS
+    srv = get_service_name(port, protocol)
+    if srv != f"unknown-service-{port}":
+        return srv.upper()
+    return "INCONNU"
+
 
 def grab_banner(ip: str, port: int, timeout=2.5) -> str:
     """

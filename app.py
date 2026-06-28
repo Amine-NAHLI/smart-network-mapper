@@ -37,18 +37,22 @@ from tkinter import ttk, messagebox
 from gui.constants import *
 from gui import db
 from gui.pages.dashboard import DashboardPage
+import threading
 from gui.pages.new_scan import NewScanPage
 from gui.pages.results import ResultsPage
 from gui.pages.history import HistoryPage
 from gui.pages.about import AboutPage
 from snm_paths import get_outputs_dir, fix_frozen_stdio, configure_hf_download_env
+from scanner.iana_manager import init_iana_database
 
 fix_frozen_stdio()
 configure_hf_download_env()
+threading.Thread(target=init_iana_database, daemon=True).start()
 
 
 def _scan_result_path():
     return os.path.join(get_outputs_dir(), "scan_result.json")
+
 
 
 def is_admin():
