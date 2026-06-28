@@ -14,6 +14,7 @@ def _run(args: list[str]) -> dict:
         capture_output=True,
         text=True,
         encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout.strip())

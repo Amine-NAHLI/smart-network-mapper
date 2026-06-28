@@ -78,7 +78,8 @@ def system_arp_scan(subnet):
             return []
             
         command = ["arp", "-a"] if os.name == 'nt' else ["arp", "-n"]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=5)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=5,
+                                encoding="utf-8", errors="replace")
         
         if result.returncode != 0:
             return []

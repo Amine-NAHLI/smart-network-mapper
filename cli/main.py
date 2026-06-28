@@ -262,7 +262,7 @@ def send_to_ml(resultats):
             
             predictions[port] = {
                 "vulnerable": pred["vulnerable"],
-                "confidence": round(pred["confidence"] * 100, 2),
+                "confidence": round(pred["confidence"], 4),
                 "label": pred["label"]
             }
         return predictions

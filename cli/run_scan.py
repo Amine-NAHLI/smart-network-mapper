@@ -43,9 +43,12 @@ try:
     from scanner.host_discovery import scan_subnet
     from scanner.port_scanner import scan_ports, TOP_UDP_PORTS
     from scanner.osint_enricher import enrich_with_cves
+    from scanner.iana_manager import init_iana_database
     from model.predictor import predict
     from reporter.html_generator import generate_html_report
     from reporter.telegram_utils import split_telegram_message, format_telegram_chunks
+
+    init_iana_database()
 except ImportError as e:
     print(json.dumps({
         "success": False,
@@ -56,6 +59,7 @@ except ImportError as e:
     sys.exit(0)
 
 TOP_PORTS = [ 
+
     20, 21, 22, 23, 25, 53, 80, 110, 111, 135,
     139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080, 8443
 ]
@@ -142,7 +146,7 @@ def handle_scan(target_ip, mode):
             )
             ml_predictions[_port_key(item)] = {
                 "vulnerable": pred["vulnerable"],
-                "confidence": round(pred["confidence"] * 100, 2),
+                "confidence": round(pred["confidence"], 4),
                 "label": pred["label"],
             }
         except Exception:

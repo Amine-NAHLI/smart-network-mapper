@@ -32,7 +32,8 @@ def get_mac_arp(ip):
         command = ["arp", "-a", ip] if os.name == 'nt' else ["arp", "-n", ip]
 
         # Exécution de la commande avec capture de la sortie
-        result = subprocess.run(command, capture_output=True, text=True, timeout=2)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=2,
+                                encoding="utf-8", errors="replace")
         
         if result.returncode != 0:
             return "Inconnu"
@@ -59,7 +60,8 @@ def estimate_os(ip):
         param = "-n" if platform.system().lower() == "windows" else "-c"
         command = ["ping", param, "1", ip]
         
-        result = subprocess.run(command, capture_output=True, text=True, timeout=2)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=2,
+                                encoding="utf-8", errors="replace")
         if result.returncode != 0:
             return "Inconnu"
 
