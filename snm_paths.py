@@ -63,3 +63,14 @@ def ensure_outputs_dir() -> str:
     path = get_outputs_dir()
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def get_resources_dir() -> str:
+    return os.path.join(get_base_dir(), "resources")
+
+
+def ensure_resources_dir() -> str:
+    path = get_resources_dir()
+    os.makedirs(path, exist_ok=True)
+    return path
+
