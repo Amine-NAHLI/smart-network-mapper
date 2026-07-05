@@ -1,6 +1,7 @@
 
 import json
 import os
+import html
 from datetime import datetime
 
 def generate_html_report(scan_data, output_path="outputs/report.html"):
@@ -159,19 +160,24 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     for p in ports:
         is_vuln = p.get("vulnerable") == 1
         row_class = "vuln-row" if is_vuln else ""
-        label = p.get("label", "Unknown")
+        label = html.escape(str(p.get("label", "Unknown")))
         # Confidence déjà en % depuis run_scan.py (pas de re-multiplication)
         conf = round(p.get("confidence", 0), 1)
-        statut = p.get("statut", "ouvert")
+        statut = html.escape(str(p.get("statut", "ouvert")))
+        
+        service_esc = html.escape(str(p.get('service', 'Inconnu')))
+        version_esc = html.escape(str(p.get('version', 'N/A')))
+        port_num = html.escape(str(p.get('port')))
+        proto = html.escape(str(p.get('protocole', 'TCP')))
         
         # Couleur IA
         ia_color = "var(--red)" if is_vuln else "var(--green)"
         
         html_template += f"""
                     <tr class="{row_class}">
-                        <td><b style="color: var(--cyan)">{p.get('port')}</b>/{p.get('protocole', 'TCP')}</td>
-                        <td>{p.get('service', 'Inconnu')}</td>
-                        <td style="color: var(--gray); font-size: 12px;">{p.get('version', 'N/A')}</td>
+                        <td><b style="color: var(--cyan)">{port_num}</b>/{proto}</td>
+                        <td>{service_esc}</td>
+                        <td style="color: var(--gray); font-size: 12px;">{version_esc}</td>
                         <td>{statut}</td>
                         <td style="color: {ia_color}; font-weight: bold;">{label}</td>
                         <td>
@@ -250,34 +256,31 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
             cve_id = cve.get("cve_id", "N/A")
             url = cve.get("url", "#")
             desc = cve.get("description", "")
-            published = cve.get("published", "N/A")
-            port_num = cve.get("_port", "?")
-            service_name = cve.get("_service", "?")
-
-            # Couleur selon sévérité
-            if cvss >= 9.0:
-                sev_color = "var(--red)"
-                badge_class = "badge-vuln"
-            elif cvss >= 7.0:
-                sev_color = "#ff8c00"
-                badge_class = "badge-high"
-            elif cvss >= 4.0:
-                sev_color = "#ffd700"
-                badge_class = "badge-medium"
-            else:
-                sev_color = "var(--green)"
-                badge_class = "badge-safe"
-
-            row_class = "vuln-row" if cvss >= 7.0 else ""
-
+            severity = html.escape(str(cve.get("severity", "NONE")))
+            cve_id = html.escape(str(cve.get("cve_id", "N/A")))
+            desc = html.escape(str(cve.get("description", "Pas de description")))
+            
+            # Formater la description (couper si trop long)
+            if len(desc) > 150:
+                desc = desc[:147] + "..."
+                
+            badge_class = "badge-safe"
+            if cvss >= 9.0: badge_class = "badge-vuln"
+            elif cvss >= 7.0: badge_class = "badge-high"
+            elif cvss >= 4.0: badge_class = "badge-medium"
+            
+            port_esc = html.escape(str(cve.get('_port')))
+            service_esc = html.escape(str(cve.get('_service')))
+            pub_esc = html.escape(str(cve.get('published', 'N/A')))
+            
             html_template += f"""
-                        <tr class="{row_class}">
-                            <td><b style="color: var(--cyan)">{port_num}</b><br><span style="color: var(--gray); font-size: 11px;">{service_name}</span></td>
-                            <td><a href="{url}" style="color: var(--cyan); text-decoration: none;" target="_blank">{cve_id}</a></td>
-                            <td style="color: {sev_color}; font-weight: bold; font-size: 18px;">{cvss}</td>
+                        <tr>
+                            <td><b style="color: var(--cyan)">{port_esc}</b> <span style="color: var(--gray); font-size: 11px;">{service_esc}</span></td>
+                            <td><b>{cve_id}</b></td>
+                            <td><b>{cvss}</b></td>
                             <td><span class="status-badge {badge_class}">{severity}</span></td>
-                            <td style="font-size: 12px; color: var(--gray); max-width: 350px;">{desc}</td>
-                            <td style="color: var(--gray); font-size: 12px;">{published}</td>
+                            <td style="color: var(--gray); font-size: 12px;">{desc}</td>
+                            <td style="color: var(--gray); font-size: 12px;">{pub_esc}</td>
                         </tr>
             """
 

@@ -53,7 +53,7 @@ def arp_scan(subnet, timeout=2):
                 "mac": received.hwsrc
             })
         return hosts
-    except Exception as e:
+    except OSError as e:
         sys.stderr.write(f"[ARP] Erreur scan ARP: {str(e)}\n")
         return []
 
@@ -146,7 +146,7 @@ def tcp_ping(ip: str, ports=None, timeout=1) -> dict:
                     alive = True
                     open_port = port
                     break
-        except Exception:
+        except OSError:
             continue
 
     os_name = "Unknown"
@@ -211,7 +211,7 @@ def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None, progress
             device = get_device_info(ip)
             hostname = device.get("hostname", "Unknown")
             os_name = device.get("os", "Unknown")
-        except Exception:
+        except (OSError, KeyError, ValueError):
             pass
 
         host_data = {

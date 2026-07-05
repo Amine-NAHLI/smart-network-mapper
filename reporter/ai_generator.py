@@ -24,9 +24,18 @@ def generate_ai_report(scan_data, api_key=None, output_path="outputs/ai_report.m
     ports = scan_data.get("ports", [])
     total_scanned = scan_data.get("total_scanned", len(ports))
     
+    # FIX CONTEXT OVERFLOW: Limiter à 30 ports max pour l'API Groq
+    MAX_PORTS_IA = 30
+    ports_to_process = ports[:MAX_PORTS_IA]
+    
     # Résumé des ports ouverts
     ports_summary = []
-    for p in ports:
+    if len(ports) > MAX_PORTS_IA:
+        ports_summary.append({
+            "WARNING": f"Alerte : Le scan a détecté {len(ports)} ports ouverts. Pour éviter un dépassement de mémoire (Context Overflow), seuls les {MAX_PORTS_IA} premiers ports sont listés ci-dessous."
+        })
+        
+    for p in ports_to_process:
         port_num = p.get("port")
         service = p.get("service", "Inconnu")
         version = p.get("version", "N/A")
