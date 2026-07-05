@@ -30,10 +30,8 @@ GRAY    = TEXT_SECONDARY
 WHITE   = TEXT_PRIMARY
 
 # ── Port lists ──────────────────────────────────────────────────
-FAST_PORTS = [
-    21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445,
-    993, 995, 1723, 3306, 3389, 5900, 8080, 8443, 8888, 9090,
-]
+from scanner.constants import TOP_PORTS
+FAST_PORTS = TOP_PORTS
 
 # ── Navigation ──────────────────────────────────────────────────
 PAGES      = ["DASHBOARD", "NEW SCAN", "RESULTS", "HISTORY", "ABOUT"]

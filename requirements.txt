@@ -1,21 +1,18 @@
 # Core Scanner
-scapy
-psutil
-icmplib
+scapy==2.6.1
+psutil==6.1.1
 
 # GUI & UX
-customtkinter
-colorama
-tqdm
-
+customtkinter==5.2.2
+colorama==0.4.6
+tqdm==4.67.1
 
 # Machine Learning & Data
-pandas
-numpy
-joblib
-scikit-learn
-huggingface_hub
+pandas==2.2.3
+numpy==2.2.0
+joblib==1.4.2
+scikit-learn==1.6.1
+huggingface_hub==0.27.1
 
 # Testing
-pytest
-
+pytest==8.3.4

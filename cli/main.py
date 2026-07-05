@@ -31,10 +31,7 @@ from scanner.utils import validate_cidr, is_public_ip, detect_lan_config
 from scanner.host_discovery import scan_subnet, tcp_ping
 from scanner.port_scanner import scan_ports
 
-TOP_PORTS = [ 
-    20, 21, 22, 23, 25, 53, 80, 110, 111, 135,
-    139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080, 8443
-]
+from scanner.constants import TOP_PORTS
 
 
 def display_hosts_table(hosts):

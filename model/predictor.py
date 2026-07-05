@@ -59,24 +59,24 @@ def _load_artifacts() -> None:
         if _model is not None:
             return
 
-    model_path, scaler_path, qt_path, features_path = _artifact_paths()
-    for path, name in [
-        (model_path,    "vulnerability_model.pkl"),
-        (scaler_path,   "scaler.pkl"),
-        (qt_path,       "quantile_transformer.pkl"),
-        (features_path, "feature_names.pkl"),
-    ]:
-        if not os.path.isfile(path):
-            raise FileNotFoundError(
-                f"Artefact manquant : {name}\n"
-                f"Chemin attendu : {path}\n"
-                f"Lancez l'application une première fois pour télécharger les modèles."
-            )
+        model_path, scaler_path, qt_path, features_path = _artifact_paths()
+        for path, name in [
+            (model_path,    "vulnerability_model.pkl"),
+            (scaler_path,   "scaler.pkl"),
+            (qt_path,       "quantile_transformer.pkl"),
+            (features_path, "feature_names.pkl"),
+        ]:
+            if not os.path.isfile(path):
+                raise FileNotFoundError(
+                    f"Artefact manquant : {name}\n"
+                    f"Chemin attendu : {path}\n"
+                    f"Lancez l'application une première fois pour télécharger les modèles."
+                )
 
-    _model         = joblib.load(model_path)
-    _scaler        = joblib.load(scaler_path)
-    _qt            = joblib.load(qt_path)
-    _feature_names = joblib.load(features_path)
+        _model         = joblib.load(model_path)
+        _scaler        = joblib.load(scaler_path)
+        _qt            = joblib.load(qt_path)
+        _feature_names = joblib.load(features_path)
 
 def load_model():
     """Charge manuellement les artefacts (utile au démarrage du serveur)."""

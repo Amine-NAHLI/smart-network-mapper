@@ -90,6 +90,8 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                 text-transform: uppercase;
             }}
             .badge-vuln {{ background: var(--red); color: white; }}
+            .badge-high {{ background: #ff8c00; color: white; }}
+            .badge-medium {{ background: #ffd700; color: black; }}
             .badge-safe {{ background: var(--green); color: #000; }}
             
             .confidence-bar {{
@@ -258,10 +260,10 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                 badge_class = "badge-vuln"
             elif cvss >= 7.0:
                 sev_color = "#ff8c00"
-                badge_class = "badge-vuln\" style=\"background: #ff8c00"
+                badge_class = "badge-high"
             elif cvss >= 4.0:
                 sev_color = "#ffd700"
-                badge_class = "badge-vuln\" style=\"background: #ffd700; color: #000"
+                badge_class = "badge-medium"
             else:
                 sev_color = "var(--green)"
                 badge_class = "badge-safe"

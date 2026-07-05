@@ -82,7 +82,7 @@ Soyez concis, professionnel et direct dans vos analyses. N'inventez pas de fauss
             }
         ],
         "temperature": 0.2,
-        "max_tokens": 1024
+        "max_tokens": 4096
     }
 
     try:

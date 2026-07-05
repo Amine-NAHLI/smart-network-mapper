@@ -41,7 +41,8 @@ load_dotenv(project_root)
 try:
     from scanner.utils import detect_lan_config
     from scanner.host_discovery import scan_subnet
-    from scanner.port_scanner import scan_ports, TOP_UDP_PORTS
+    from scanner.port_scanner import scan_ports
+    from scanner.constants import TOP_PORTS, TOP_UDP_PORTS, EXTENDED_UDP_PORTS
     from scanner.osint_enricher import enrich_with_cves
     from scanner.iana_manager import init_iana_database
     from model.predictor import predict
@@ -57,14 +58,6 @@ except ImportError as e:
         "phase": "init",
     }, ensure_ascii=True))
     sys.exit(0)
-
-TOP_PORTS = [ 
-
-    20, 21, 22, 23, 25, 53, 80, 110, 111, 135,
-    139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080, 8443
-]
-
-
 def _emit_error(message: str, phase: str = "scan") -> None:
     """Émet une erreur JSON lisible par n8n (exit 0 pour que stdout soit parsable)."""
     print(json.dumps({
@@ -114,7 +107,7 @@ def handle_scan(target_ip, mode):
 
     # Scan TCP + UDP (ports UDP critiques en mode rapide)
     try:
-        udp_ports = TOP_UDP_PORTS if mode == "fast" else TOP_UDP_PORTS
+        udp_ports = TOP_UDP_PORTS if mode == "fast" else EXTENDED_UDP_PORTS
         resultats_bruts = scan_ports(
             target_ip,
             ports_to_scan,
