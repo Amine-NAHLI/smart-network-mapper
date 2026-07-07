@@ -516,3 +516,10 @@ _Cybersecurity Enthusiast & AI Developer_
 _June 2026 — Smart Network Mapper v1.0_
 
 </div>
+
+## Usage
+
+```bash
+python3 app.py
+```
+
