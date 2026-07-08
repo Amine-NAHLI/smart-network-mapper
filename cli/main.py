@@ -31,7 +31,7 @@ from scanner.utils import validate_cidr, is_public_ip, detect_lan_config
 from scanner.host_discovery import scan_subnet, tcp_ping
 from scanner.port_scanner import scan_ports
 
-from scanner.constants import TOP_PORTS
+from scanner.constants import TOP_PORTS, TOP_UDP_PORTS, EXTENDED_UDP_PORTS
 
 
 def display_hosts_table(hosts):
@@ -86,7 +86,8 @@ def display_ports_table(resultats):
     print("-" * 80)
 
     for res in resultats:
-        port_protocol = f"{res['port']}/tcp" #on ajoute /tcp pour indiquer que c'est un port tcp
+        proto = res.get('protocole', 'TCP')
+        port_protocol = f"{res['port']}/{proto.lower()}" #on ajoute /tcp ou /udp pour indiquer le protocole
         status = res["statut"].upper() #on met le statut en majuscule
         service = res["service"].lower() #on met le service en minuscule
         
@@ -184,6 +185,35 @@ def choisir_mode_scan():
             print(f"  {Fore.RED}[✘] Choix invalide — entrez 1, 2 ou 3.{Style.RESET_ALL}")
 
 
+def choisir_scan_udp():
+    """
+    Demande à l'utilisateur s'il veut inclure un scan UDP et quel mode.
+    Retourne la liste de ports UDP à scanner, ou None si pas de scan UDP.
+    """
+    print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
+    print(f"║              SCAN UDP (optionnel)                        ║")
+    print(f"╠══════════════════════════════════════════════════════════╣")
+    print(f"║  {Fore.GREEN}[ 1 ]{Fore.CYAN}  Oui — Ports UDP critiques  (13 ports)  {Fore.YELLOW}(~15 sec){Fore.CYAN}  ║")
+    print(f"║  {Fore.YELLOW}[ 2 ]{Fore.CYAN}  Oui — Ports UDP étendus   (16 ports)  {Fore.YELLOW}(~20 sec){Fore.CYAN}  ║")
+    print(f"║  {Fore.RED}[ 3 ]{Fore.CYAN}  Non — TCP uniquement                              ║")
+    print(f"╚══════════════════════════════════════════════════════════╝{Style.RESET_ALL}")
+
+    while True:
+        choix = input(f"\n  {Fore.WHITE}Votre choix (1/2/3) : {Style.RESET_ALL}").strip()
+
+        if choix == "1":
+            print(f"\n  {Fore.GREEN}[✔] Scan UDP activé — 13 ports critiques (DNS, SNMP, DHCP, NTP...){Style.RESET_ALL}")
+            return TOP_UDP_PORTS
+        elif choix == "2":
+            print(f"\n  {Fore.YELLOW}[✔] Scan UDP activé — 16 ports étendus (+ VPN, SIP...){Style.RESET_ALL}")
+            return EXTENDED_UDP_PORTS
+        elif choix == "3":
+            print(f"\n  {Fore.YELLOW}[!] Scan UDP désactivé — TCP uniquement.{Style.RESET_ALL}")
+            return None
+        else:
+            print(f"  {Fore.RED}[✘] Choix invalide — entrez 1, 2 ou 3.{Style.RESET_ALL}")
+
+
 def save_json(target_ip, resultats, ml_predictions={}):
     """
     sauvegarde et Garantit une seule sauvegarde par scan.
@@ -202,9 +232,10 @@ def save_json(target_ip, resultats, ml_predictions={}):
         if res["statut"] == "ouvert":
             port = res["port"]
             pred = ml_predictions.get(port, {})
+            proto = res.get("protocole", "TCP")
             data["ports"].append({
                 "port": port,
-                "protocole": "TCP",
+                "protocole": proto,
                 "statut": "ouvert",
                 "service": res["service"],
                 "version": res.get("version", "N/A"),
@@ -406,10 +437,16 @@ def main():
     raw_ports = choisir_mode_scan()
     ports_a_scanner = sorted(list(set(raw_ports)))
 
+    # STEP 6.5 - Choix du scan UDP
+    udp_ports = choisir_scan_udp()
+    include_udp = udp_ports is not None
+
     # STEP 7 - Run scan_ports() with tqdm
-    print(f"\n  {Fore.YELLOW}[→] Lancement du scan — {len(ports_a_scanner)} port(s) unique(s) sur {target_ip}{Style.RESET_ALL}\n")
+    total_ports = len(ports_a_scanner) + (len(udp_ports) if udp_ports else 0)
+    udp_info = f" + {len(udp_ports)} UDP" if udp_ports else ""
+    print(f"\n  {Fore.YELLOW}[→] Lancement du scan — {len(ports_a_scanner)} TCP{udp_info} port(s) sur {target_ip}{Style.RESET_ALL}\n")
     pbar = tqdm(
-        total=len(ports_a_scanner),
+        total=total_ports,
         desc="  Progression",
         unit="port",
         bar_format="  {l_bar}{bar:40}{r_bar}"
@@ -419,7 +456,7 @@ def main():
         pbar.update(1)
 
     try:
-        resultats_bruts = scan_ports(target_ip, ports_a_scanner, progress_callback=pbar_update)
+        resultats_bruts = scan_ports(target_ip, ports_a_scanner, progress_callback=pbar_update, include_udp=include_udp, udp_ports=udp_ports)
     except KeyboardInterrupt:
         pbar.close()
         print(f"\n  {Fore.YELLOW}[!] Scan interrompu par l'utilisateur.{Style.RESET_ALL}")
@@ -430,10 +467,12 @@ def main():
     ml_predictions = send_to_ml(resultats_bruts)
 
     # BUG : Même si scan_ports est propre, il est possible que des doublons surviennent par erreur.
-    # SOLUTION : On utilise un dictionnaire {port: résultat} pour garantir qu'un même port
-    # ne soit pas affiché ou sauvegardé deux fois.
-    unique_results_dict = {res["port"]: res for res in resultats_bruts}
-    resultats = sorted(unique_results_dict.values(), key=lambda x: x["port"])
+    # SOLUTION : On utilise un dictionnaire {port:protocole -> résultat} pour garantir qu'un même port
+    # ne soit pas affiché ou sauvegardé deux fois (clé unique = port + protocole).
+    def _port_key(item):
+        return f"{item.get('port', 0)}:{item.get('protocole', 'TCP')}"
+    unique_results_dict = {_port_key(res): res for res in resultats_bruts}
+    resultats = sorted(unique_results_dict.values(), key=lambda x: (x.get('protocole', 'TCP'), x['port']))
 
     # STEP 8 - Display results, call save_json(), display_ports_table()
     # SOLUTION : Ces appels sont strictement isolés à la fin du flux principal, utilisant les données dédoublonnées.
@@ -443,6 +482,7 @@ def main():
  
     for i, res in enumerate(resultats): 
         port = res["port"]
+        proto = res.get("protocole", "TCP")
         statut = res["statut"]
         service = res["service"]
         banner = res.get("banner", "")
@@ -450,25 +490,28 @@ def main():
  
         if statut == "ouvert":
             # Header du port ouvert
-            print(f"  {Fore.GREEN}[+]{Style.RESET_ALL} Port {Fore.WHITE}{port}/TCP{Style.RESET_ALL} : {Fore.GREEN}OUVERT{Style.RESET_ALL} ({service}) -> {version}")
+            print(f"  {Fore.GREEN}[+]{Style.RESET_ALL} Port {Fore.WHITE}{port}/{proto}{Style.RESET_ALL} : {Fore.GREEN}OUVERT{Style.RESET_ALL} ({service}) -> {version}")
             
             # Préparation des lignes de détails
             details = []
             
-            # 1. Banner
-            exclude_banner = ["", None, "N/A", "Non détectée", "Réponse vide"]
+            # 1. Protocole
+            details.append(("Protocole ", proto))
+            
+            # 2. Banner
+            exclude_banner = ["", None, "N/A", "Non détectée", "Réponse vide", "Pas de réponse UDP"]
             if banner and banner not in exclude_banner:
                 details.append(("Banner    ", banner))
             
-            # 2. Version
+            # 3. Version
             exclude_version = ["", None, "N/A", "Non détectée", "Version inconnue"]
             if version and version not in exclude_version:
                 details.append(("Version   ", version))
                 
-            # 3. Service
+            # 4. Service
             details.append(("Service   ", service))
             
-            # 4. ML Prediction (toujours en dernier)
+            # 5. ML Prediction (toujours en dernier)
             ml_text = f"{Fore.WHITE}⚪ Non analysé{Style.RESET_ALL}"
             if port in ml_predictions:
                 pred = ml_predictions[port]
@@ -488,11 +531,15 @@ def main():
             print()
 
         elif statut == "fermé":
-            print(f"  {Fore.RED}[-]{Style.RESET_ALL} Port {Fore.WHITE}{port}/TCP{Style.RESET_ALL} : {Fore.RED}FERMÉ{Style.RESET_ALL} ({service})")
+            print(f"  {Fore.RED}[-]{Style.RESET_ALL} Port {Fore.WHITE}{port}/{proto}{Style.RESET_ALL} : {Fore.RED}FERMÉ{Style.RESET_ALL} ({service})")
         
+        elif statut == "fermé/filtré":
+            # Cas spécifique UDP : pas de réponse = fermé ou filtré
+            print(f"  {Fore.YELLOW}[~]{Style.RESET_ALL} Port {Fore.WHITE}{port}/{proto}{Style.RESET_ALL} : {Fore.YELLOW}FERMÉ/FILTRÉ{Style.RESET_ALL} ({service})")
+
         else:
             # Cas filtré / timeout
-            print(f"  {Fore.YELLOW}[~]{Style.RESET_ALL} Port {Fore.WHITE}{port}/TCP{Style.RESET_ALL} : {Fore.YELLOW}FILTRÉ{Style.RESET_ALL} ({service})")
+            print(f"  {Fore.YELLOW}[~]{Style.RESET_ALL} Port {Fore.WHITE}{port}/{proto}{Style.RESET_ALL} : {Fore.YELLOW}FILTRÉ{Style.RESET_ALL} ({service})")
             raison = banner.replace("ERREUR: ", "") if banner else "Timeout"
             print(f"      {Fore.CYAN}└─{Style.RESET_ALL} Raison : {raison}")
 
