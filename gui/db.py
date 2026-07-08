@@ -41,23 +41,37 @@ def init_db():
             open_ports  INTEGER DEFAULT 0,
             vuln_ports  INTEGER DEFAULT 0,
             total_ports INTEGER DEFAULT 0,
-            json_path   TEXT    DEFAULT ''
+            json_path   TEXT    DEFAULT '',
+            source      TEXT    DEFAULT 'Inconnue',
+            raw_data    TEXT    DEFAULT '{}'
         )
     """)
+    
+    # Mise à jour du schéma si la base existe déjà (ajout des nouvelles colonnes)
+    try:
+        conn.execute("ALTER TABLE scans ADD COLUMN source TEXT DEFAULT 'Inconnue'")
+    except sqlite3.OperationalError:
+        pass # Colonne existante
+        
+    try:
+        conn.execute("ALTER TABLE scans ADD COLUMN raw_data TEXT DEFAULT '{}'")
+    except sqlite3.OperationalError:
+        pass # Colonne existante
+        
     conn.commit()
     conn.close()
 
 
 def insert_scan(target: str, date: str, duration: float,
                 open_ports: int, vuln_ports: int, total_ports: int,
-                json_path: str = "") -> int:
+                json_path: str = "", source: str = "Inconnue", raw_data: str = "{}") -> int:
     """Insère un résumé de scan et retourne l'id généré."""
     conn = _connect()
     cur = conn.execute(
         """INSERT INTO scans
-           (target, date, duration, open_ports, vuln_ports, total_ports, json_path)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (target, date, duration, open_ports, vuln_ports, total_ports, json_path),
+           (target, date, duration, open_ports, vuln_ports, total_ports, json_path, source, raw_data)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (target, date, duration, open_ports, vuln_ports, total_ports, json_path, source, raw_data),
     )
     scan_id = cur.lastrowid
     conn.commit()

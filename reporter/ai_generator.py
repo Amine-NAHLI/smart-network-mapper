@@ -21,6 +21,7 @@ def generate_ai_report(scan_data, api_key=None, output_path="outputs/ai_report.m
     # Extraction des données clés
     target = scan_data.get("cible", "Inconnue")
     date = scan_data.get("date", "Inconnue")
+    source = scan_data.get("source", "Inconnue")
     ports = scan_data.get("ports", [])
     total_scanned = scan_data.get("total_scanned", len(ports))
     
@@ -58,6 +59,7 @@ Analysez les données de scan de vulnérabilités suivantes pour l'hôte cible {
 Données du Scan :
 - Cible : {target}
 - Date du scan : {date}
+- Source d'exécution : {source}
 - Nombre de ports scannés : {total_scanned}
 - Détails des ports ouverts :
 {json.dumps(ports_summary, indent=2, ensure_ascii=False)}

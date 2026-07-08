@@ -10,6 +10,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     """
     target = scan_data.get("cible", "Inconnue")
     date = scan_data.get("date", "Inconnue")
+    source = scan_data.get("source", "Inconnue")
     ports = scan_data.get("ports", [])
     
     # Statistiques
@@ -114,7 +115,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                 </div>
                 <div style="text-align: right">
                     <span style="color: var(--cyan)">CIBLE: {target}</span><br>
-                    <span style="color: var(--gray)">Généré le {date}</span>
+                    <span style="color: var(--gray)">Généré le {date} via {source}</span>
                 </div>
             </header>
 
@@ -161,8 +162,9 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         is_vuln = p.get("vulnerable") == 1
         row_class = "vuln-row" if is_vuln else ""
         label = html.escape(str(p.get("label", "Unknown")))
-        # Confidence déjà en % depuis run_scan.py (pas de re-multiplication)
-        conf = round(p.get("confidence", 0), 1)
+        # Confidence est entre 0 et 1, on la convertit en pourcentage
+        raw_conf = p.get("confidence", 0)
+        conf = round(raw_conf * 100, 1) if raw_conf <= 1.0 else round(raw_conf, 1)
         statut = html.escape(str(p.get("statut", "ouvert")))
         
         service_esc = html.escape(str(p.get('service', 'Inconnu')))

@@ -218,21 +218,24 @@ def save_json(target_ip, resultats, ml_predictions={}):
     """
     sauvegarde et Garantit une seule sauvegarde par scan.
     """
-    os.makedirs("outputs", exist_ok=True) #créer le dossier outputs s'il n'existe pas
+    from snm_paths import ensure_outputs_dir, get_outputs_dir
+    ensure_outputs_dir()
 
     date_jour = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     data = { 
         "cible": target_ip,
         "date": date_jour,
+        "source": "CLI Interactive",
         "ports": []
     }
  
     for res in resultats:
         if res["statut"] == "ouvert":
             port = res["port"]
-            pred = ml_predictions.get(port, {})
             proto = res.get("protocole", "TCP")
+            port_key = f"{port}:{proto}"
+            pred = ml_predictions.get(port_key, {})
             data["ports"].append({
                 "port": port,
                 "protocole": proto,
@@ -245,15 +248,34 @@ def save_json(target_ip, resultats, ml_predictions={}):
                 "label": pred.get("label", "N/A")
             })
 
-    output_path = os.path.join("outputs", "scan_result.json") #créer le fichier scan_result.json dans le dossier outputs
+    output_path = os.path.join(get_outputs_dir(), "scan_result.json") #créer le fichier scan_result.json dans le dossier outputs
 
     with open(output_path, "w", encoding="utf-8") as f: #ouvrir le fichier scan_result.json en mode écriture
         json.dump(data, f, indent=4, ensure_ascii=False) #écrire les données dans le fichier scan_result.json
 
+    try:
+        from gui.db import init_db, insert_scan
+        init_db()
+        open_ports = len(data["ports"])
+        vuln_ports = sum(1 for p in data["ports"] if p.get("vulnerable") == 1)
+        insert_scan(
+            target=target_ip,
+            date=date_jour,
+            duration=0.0,
+            open_ports=open_ports,
+            vuln_ports=vuln_ports,
+            total_ports=len(resultats),
+            json_path=output_path,
+            source="CLI Interactive",
+            raw_data=json.dumps(data, ensure_ascii=False)
+        )
+    except Exception as e:
+        pass
+
     # Génération du rapport HTML Premium
     try:
         from reporter.html_generator import generate_html_report
-        html_path = os.path.join("outputs", "report.html")
+        html_path = os.path.join(get_outputs_dir(), "report.html")
         generate_html_report(data, html_path)
         print(f"  {Fore.GREEN}[✔] Rapport visuel généré : '{html_path}'.{Style.RESET_ALL}")
     except Exception:
@@ -279,16 +301,19 @@ def send_to_ml(resultats):
             port = item.get("port", 0)
             version = item.get("version", "")
             service = item.get("service", "")
+            protocol = item.get("protocole", "TCP")
             
             # Appel direct au modèle local
             pred = predict(
                 port=port,
                 version_string=version,
                 service=service,
-                protocol="tcp" # par défaut
+                protocol=protocol
             )
             
-            predictions[port] = {
+            port_key = f"{port}:{protocol}"
+            
+            predictions[port_key] = {
                 "vulnerable": pred["vulnerable"],
                 "confidence": round(pred["confidence"], 4),
                 "label": pred["label"]
@@ -513,8 +538,9 @@ def main():
             
             # 5. ML Prediction (toujours en dernier)
             ml_text = f"{Fore.WHITE}⚪ Non analysé{Style.RESET_ALL}"
-            if port in ml_predictions:
-                pred = ml_predictions[port]
+            port_key = f"{port}:{proto}"
+            if port_key in ml_predictions:
+                pred = ml_predictions[port_key]
                 conf = pred['confidence']
                 if pred["vulnerable"] == 1:
                     ml_text = f"{Fore.RED}⚠️  VULNERABLE (confiance: {conf}%){Style.RESET_ALL}"

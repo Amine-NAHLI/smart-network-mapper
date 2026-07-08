@@ -172,6 +172,7 @@ def handle_scan(target_ip, mode):
     data = { 
         "cible": target_ip,
         "date": date_jour,
+        "source": "CLI Auto",
         "total_scanned": len(resultats_bruts),
         "ports": []
     }
@@ -203,6 +204,25 @@ def handle_scan(target_ip, mode):
     json_path = os.path.join(outputs_dir, "scan_result.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
+
+    try:
+        from gui.db import init_db, insert_scan
+        init_db()
+        open_ports = len(data["ports"])
+        vuln_ports = sum(1 for p in data["ports"] if p.get("vulnerable") == 1)
+        insert_scan(
+            target=target_ip,
+            date=date_jour,
+            duration=0.0,
+            open_ports=open_ports,
+            vuln_ports=vuln_ports,
+            total_ports=len(resultats_bruts),
+            json_path=json_path,
+            source="CLI Auto",
+            raw_data=json.dumps(data, ensure_ascii=False)
+        )
+    except Exception as e:
+        pass
 
     # Génération du rapport HTML visuel
     html_path = os.path.join(outputs_dir, "report.html")

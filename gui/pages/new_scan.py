@@ -548,6 +548,8 @@ class NewScanPage(ctk.CTkFrame):
             vuln_ports=len(vuln_ports),
             total_ports=len(self.scan_results),
             json_path=json_path,
+            source="GUI",
+            raw_data=json.dumps(self.scan_results, ensure_ascii=False)
         )
 
         # Propager les résultats au contexte partagé de l'app
@@ -568,6 +570,7 @@ class NewScanPage(ctk.CTkFrame):
         data = {
             "cible":            ip,
             "date":             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "source":           "GUI",
             "duration_seconds": duration,
             "total_scanned":    len(results),
             "ports": [
