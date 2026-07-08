@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/License-MIT-FFD700?style=for-the-badge" alt="License"/>
   <img src="https://img.shields.io/badge/AI-Random_Forest-FF00FF?style=for-the-badge&logo=scikitlearn&logoColor=white" alt="AI"/>
   <img src="https://img.shields.io/badge/SQLite-History-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite"/>
-  <img src="https://img.shields.io/badge/Status-v1.0-00FF00?style=for-the-badge" alt="Status"/>
+  <img src="https://img.shields.io/badge/Status-v1.1-00FF00?style=for-the-badge" alt="Status"/>
 </p>
 
 <p>
@@ -31,6 +31,7 @@
 
 [Features](#-key-features) •
 [Architecture](#%EF%B8%8F-project-architecture) •
+[Ecosystem](#-project-ecosystem) •
 [Installation](#%EF%B8%8F-installation) •
 [Usage](#-usage) •
 [AI Engine](#-ai-engine) •
@@ -79,6 +80,29 @@
 
 ---
 
+## 🔗 Project Ecosystem
+
+Smart Network Mapper is part of a **4-repository ecosystem**. Each repository handles a dedicated phase of the pipeline:
+
+```
+ ┌─────────────────────┐     ┌──────────────────────────┐     ┌──────────────────────────┐     ┌─────────────────────┐
+ │  📊 CVE Dataset     │     │  🧠 Training Random      │     │  🛰️ Smart Network        │     │  📚 SNM Docs        │
+ │     Generator       │ ──▶ │     Forest               │ ──▶ │     Mapper               │ ◀── │     (Website)       │
+ │                     │     │                          │     │                          │     │                     │
+ │  NVD API → CSV      │     │  Normalize → Train → PKL │     │  Scan + ML + Reports     │     │  Docs + Download    │
+ └─────────────────────┘     └──────────────────────────┘     └──────────────────────────┘     └─────────────────────┘
+        Phase 1                       Phase 2                         Phase 3                        Phase 4
+```
+
+| # | Repository | Role | Link |
+|---|---|---|---|
+| 1️⃣ | **CVE Dataset Generator** | Collects CVE data from NVD/NIST API, generates labeled training datasets | [![Repo](https://img.shields.io/badge/GitHub-cve--dataset--generator-blue?logo=github)](https://github.com/Amine-NAHLI/cve-dataset-generator) |
+| 2️⃣ | **Training Random Forest** | Normalizes data, trains Random Forest (500 trees), exports `.pkl` artifacts | [![Repo](https://img.shields.io/badge/GitHub-training__random__forest-blue?logo=github)](https://github.com/Amine-NAHLI/training_random_forest) |
+| 3️⃣ | **Smart Network Mapper** _(this repo)_ | Main application: scanner, AI prediction, reports, GUI, CLI, Telegram bot | [![Repo](https://img.shields.io/badge/GitHub-smart--network--mapper-blue?logo=github)](https://github.com/Amine-NAHLI/smart-network-mapper) |
+| 4️⃣ | **SNM Docs** | Interactive documentation website with 3D globe & download portal | [![Repo](https://img.shields.io/badge/GitHub-snm--docs-blue?logo=github)](https://github.com/Amine-NAHLI/snm-docs) |
+
+---
+
 ## ✨ Key Features
 
 ### 🔍 Discovery & Mapping
@@ -94,10 +118,10 @@
 
 | Feature                           | Description                                                                            |
 | --------------------------------- | -------------------------------------------------------------------------------------- |
-| ⚡ **Multi-Mode TCP Scanning**    | **Fast** (22 critical ports), **Full** (1–65535) or **Custom** modes, 300 workers      |
-| 📶 **UDP Scanning**               | 10 critical UDP ports: DNS, DHCP, TFTP, NTP, SNMP, IKE/VPN, Syslog, UPnP               |
+| ⚡ **Multi-Mode TCP Scanning**    | **Fast** (24 critical ports), **Full** (1–65535) or **Custom** modes, 300 workers      |
+| 📶 **UDP Scanning**               | 13 critical UDP ports (DNS, DHCP, SNMP, NTP) or 16 extended ports (+VPN, SIP, mDNS)   |
 | 🎯 **Banner Grabbing**            | Specialized probes for **HTTP, SSH, FTP, SMTP, POP3, IMAP, Redis, MySQL**              |
-| 🔬 **Service Versioning**         | Precise service signature & version extraction                                         |
+| 🔬 **Service Versioning**         | Precise service signature & version extraction via IANA database + regex               |
 | 🧠 **AI Vulnerability Predictor** | Random Forest classifier (500 trees) trained on **2.3M** NVD/NIST entries              |
 | 🧩 **Wisdom Layer**               | Post-AI heuristic layer overriding known-safe / known-vulnerable edge cases            |
 | 🛰️ **OSINT NVD Enrichment**       | Real-time lookup of official CVEs (NVD/NIST API) — hybrid ML + deterministic detection |
@@ -156,6 +180,8 @@ smart-network-mapper/
 │   ├── port_scanner.py                # ├─ Multi-threaded TCP + UDP scanning, banner grabbing
 │   ├── device_info.py                 # ├─ MAC (ARP), reverse DNS hostname, OS via TTL
 │   ├── osint_enricher.py              # ├─ Real-time CVE enrichment via NVD/NIST API
+│   ├── iana_manager.py                # ├─ IANA service name database (CSV → SQLite cache)
+│   ├── constants.py                   # ├─ Port lists (TOP_PORTS, TOP_UDP_PORTS, EXTENDED_UDP_PORTS)
 │   └── utils.py                       # └─ LAN auto-detection, CIDR validation, is_public_ip()
 │
 ├── 📁 model/                          # 🧠 AI Vulnerability Engine
@@ -173,6 +199,10 @@ smart-network-mapper/
 │   ├── ai_generator.py                # ├─ AI audit report via Groq (Llama-3.3-70b), SSL enforced
 │   └── telegram_utils.py              # └─ Smart message splitting (> 4096 chars) for Telegram
 │
+├── 📁 cli/                            # ⌨️ Command-Line Interfaces
+│   ├── main.py                        # ├─ Interactive CLI with colored menus (human user)
+│   └── run_scan.py                    # └─ Non-interactive CLI for automation (n8n / scripts)
+│
 ├── 📁 workflow/                       # 🔁 Automation
 │   └── My workflow SNM.json           # └─ n8n workflow export (12 nodes — Telegram bot)
 │
@@ -182,9 +212,6 @@ smart-network-mapper/
 │   ├── package_release.bat            # ├─ Portable package creator
 │   ├── upload_windows_release.py      # ├─ Hugging Face ZIP uploader
 │   └── pyi_rth_snm_stdio.py          # └─ PyInstaller runtime hook (stdout/stderr fix)
-│
-├── 📁 cli/                            # ⌨️ Command-Line Interface
-│   └── run_scan.py                    # └─ --discover / --target <IP> / --mode fast|full
 │
 ├── 📁 assets/                         # 🎨 Visual Resources
 ├── 📁 build/  · 📁 dist/  · 📁 release/  # 📦 PyInstaller build artifacts
@@ -294,20 +321,61 @@ python app.py
 
 ### ⌨️ Command-Line Mode (CLI)
 
-Ideal for servers, scripting, or n8n automation:
+SNM provides **two CLI interfaces** for different use cases:
+
+#### 🧑‍💻 Interactive CLI — `cli/main.py`
+
+A step-by-step guided experience with colored menus, progress bars, and formatted tables:
+
+```bash
+python cli/main.py
+```
+
+| Step | What it does |
+|---|---|
+| 1. Network Discovery | Auto-detect LAN (psutil) or manual CIDR input → discover active hosts |
+| 2. Target Selection | Pick a local host, enter a public IP, or quit |
+| 3. TCP Scan Mode | Fast (24 ports) / Full (65535) / Custom (specific ports or range) |
+| 4. UDP Scan Mode | 13 critical UDP ports / 16 extended ports / TCP only |
+| 5. Execution | Multi-threaded scan with real-time tqdm progress bar |
+| 6. AI Analysis | Local ML prediction (vulnerable/safe) with confidence score |
+| 7. Results | Color-coded tree view per port (protocol, banner, version, ML verdict) |
+| 8. Export | JSON + HTML report saved to `outputs/` |
+
+#### 🤖 Automation CLI — `cli/run_scan.py`
+
+Non-interactive, designed for **n8n**, scripts, and remote execution. Pure JSON output on stdout:
 
 ```bash
 # Discover active hosts on the local network
 python cli/run_scan.py --discover
 
-# Fast scan (22 TCP + 10 UDP ports, ML prediction, NVD enrichment, Groq report)
+# Fast scan (24 TCP + 13 UDP, ML prediction, NVD enrichment, Groq AI report)
 python cli/run_scan.py --target 192.168.1.1 --mode fast
 
-# Full scan (1–65535 TCP ports + UDP, full report)
+# Full scan (65535 TCP + 16 UDP, complete report)
 python cli/run_scan.py --target 192.168.1.1 --mode full
 ```
 
-The script automatically loads `.env` at startup (`GROQ_API_KEY`, `TELEGRAM_BOT_TOKEN`) and generates `outputs/scan_result.json` and `outputs/report.html`.
+| Argument | Example | Behavior |
+|---|---|---|
+| `--discover` | `python cli/run_scan.py --discover` | Auto-detect LAN subnet, list active hosts as JSON |
+| `--target` + `--mode fast` | `python cli/run_scan.py --target 192.168.1.1 --mode fast` | Fast scan: 24 TCP + 13 UDP, ML, OSINT NVD, Groq AI report |
+| `--target` + `--mode full` | `python cli/run_scan.py --target 192.168.1.1 --mode full` | Full scan: 65535 TCP + 16 UDP, complete report |
+
+> 📝 `--discover` and `--target` are **mutually exclusive**. `--mode` defaults to `fast`.
+
+#### CLI Comparison
+
+| Criteria | `cli/main.py` | `cli/run_scan.py` |
+|---|---|---|
+| Mode | 🧑‍💻 Interactive (menus) | 🤖 Non-interactive (argparse) |
+| Output | Colored terminal tables | Pure JSON on stdout |
+| UDP Scan | Optional (user chooses) | Automatic (always included) |
+| OSINT NVD | ❌ | ✅ Real-time CVE enrichment |
+| Groq AI Report | ❌ | ✅ Full audit generation |
+| Telegram splitting | ❌ | ✅ Auto-chunking for Telegram |
+| Target audience | Human at terminal | n8n / scripts / automation |
 
 ### 📖 Typical Workflow
 
@@ -323,19 +391,11 @@ graph LR
     H --> I[📊 Results / HTML Report / Telegram]
 ```
 
-**GUI Steps:**
-
-1. Click **"Auto Detect"** → identifies the subnet (e.g. `192.168.1.0/24`)
-2. Click **"Discover Hosts"** → lists active devices
-3. Select a **target IP** from the list
-4. Click **"Launch Scan"** → full TCP/UDP analysis, AI prediction & NVD enrichment
-5. Results are **automatically saved** to the SQLite history
-6. Check the **"RESULTS"** tab or open the generated HTML report
-7. Revisit past scans anytime via the **"HISTORY"** tab
-
 ---
 
 ## 🧠 AI Engine
+
+The AI model used in this application is trained in a **separate repository**: [`training_random_forest`](https://github.com/Amine-NAHLI/training_random_forest), using data generated by [`cve-dataset-generator`](https://github.com/Amine-NAHLI/cve-dataset-generator).
 
 The `model/` and `scanner/osint_enricher.py` modules form a **hybrid ML + NVD defense-in-depth pipeline**.
 
@@ -363,6 +423,10 @@ The `model/` and `scanner/osint_enricher.py` modules form a **hybrid ML + NVD de
 | `feature_names.pkl`        | 1.5 KB      | Ordered list of 91 model features              |
 
 > 💡 Models are hosted on [Hugging Face](https://huggingface.co/aminenahli/smart-network-mapper-models) and downloaded automatically on first launch.
+>
+> 📊 **Dataset source**: [`cve-dataset-generator`](https://github.com/Amine-NAHLI/cve-dataset-generator) — 2.3M CVE entries from NVD/NIST
+>
+> 🧠 **Training code**: [`training_random_forest`](https://github.com/Amine-NAHLI/training_random_forest) — normalization, training & evaluation pipeline
 
 ### 🤖 Generative AI Audit Report
 
@@ -417,7 +481,7 @@ npm run build
 npm run deploy
 ```
 
-> 🐳 The documentation site (`snm-docs`) also ships with a multi-stage **Dockerfile** (Node build → Nginx Alpine serve) for cloud deployment (AWS/GCP/Azure/Heroku).
+> 🐳 The documentation site ([`snm-docs`](https://github.com/Amine-NAHLI/snm-docs)) also ships with a multi-stage **Dockerfile** (Node build → Nginx Alpine serve) for cloud deployment (AWS/GCP/Azure/Heroku).
 
 ---
 
@@ -507,12 +571,18 @@ _Cybersecurity Enthusiast & AI Developer_
   </a>
 </p>
 
+### 🔗 Related Repositories
+
+[![CVE Dataset Generator](https://img.shields.io/badge/📊_CVE_Dataset_Generator-Phase_1-orange?style=for-the-badge)](https://github.com/Amine-NAHLI/cve-dataset-generator)
+[![Training Random Forest](https://img.shields.io/badge/🧠_Training_Random_Forest-Phase_2-purple?style=for-the-badge)](https://github.com/Amine-NAHLI/training_random_forest)
+[![SNM Docs](https://img.shields.io/badge/📚_SNM_Docs-Website-blue?style=for-the-badge)](https://github.com/Amine-NAHLI/snm-docs)
+
 <br/>
 
 ### ⭐ If you liked this project, leave a star on GitHub! ⭐
 
 <br/>
 
-_June 2026 — Smart Network Mapper v1.0_
+_July 2026 — Smart Network Mapper v1.1_
 
 </div>
