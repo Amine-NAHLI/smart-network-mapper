@@ -17,3 +17,7 @@ outputs/
 build/
 dist/
 *.spec
+release/
+build/
+dist/
+.venv/

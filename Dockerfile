@@ -4,7 +4,8 @@ FROM python:3.11-slim
 # Mettre à jour le système et installer Nmap/Scapy (requis pour les scans réseau avancés)
 RUN apt-get update && apt-get install -y \
     iputils-ping \
-    nmap \
+    net-tools \
+    arp-scan \
     && rm -rf /var/lib/apt/lists/*
 
 # Définir le répertoire de travail dans le conteneur
