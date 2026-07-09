@@ -141,7 +141,7 @@ Smart Network Mapper is part of a **4-repository ecosystem**. Each repository ha
 | Feature                        | Description                                                                |
 | ------------------------------ | -------------------------------------------------------------------------- |
 | 🤖 **Telegram Bot**            | Trigger scans and receive full reports directly from a smartphone          |
-| 🔁 **n8n Workflow**            | 12-node workflow orchestrating discovery → scan → AI report → delivery     |
+| 🔁 **n8n Workflow**            | 16-node workflow orchestrating discovery → scan → AI report → delivery     |
 | ✂️ **Smart Message Splitting** | Automatic chunking of AI reports exceeding Telegram's 4096-character limit |
 
 ---

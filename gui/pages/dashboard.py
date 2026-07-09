@@ -131,14 +131,23 @@ class DashboardPage(ctk.CTkFrame):
             txt_col = RED if is_vuln else GREEN
             row = ctk.CTkFrame(self.dash_scroll, fg_color=row_bg, corner_radius=4)
             row.pack(fill="x", pady=1)
-            conf = p.get("confidence", 0)
+            conf = p.get("confidence")
+
+            try:
+                conf_val = float(conf)
+                if conf_val <= 1:
+                    conf_val *= 100
+                conf_text = f"{conf_val:.1f}%"
+            except (TypeError, ValueError):
+                conf_text = "-"
+
             vals = [
                 str(p.get("port", "")),
                 p.get("service", ""),
                 p.get("version", ""),
                 p.get("statut", ""),
                 p.get("label", ""),
-                f"{conf:.1f}%",
+                conf_text,
             ]
             for val, w in zip(vals, widths):
                 ctk.CTkLabel(row, text=val, font=("Courier New", 10),
