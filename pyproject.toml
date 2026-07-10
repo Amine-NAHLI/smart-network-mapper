@@ -1,0 +1,83 @@
+[project]
+name = "smart-network-mapper"
+version = "1.1.0"
+description = "Scanner et cartographe de réseau intelligent avec prédiction de vulnérabilités par IA"
+requires-python = ">=3.13"
+license = "MIT"
+authors = [
+    { name = "Amine NAHLI" },
+]
+readme = "README.md"
+keywords = ["network", "scanner", "security", "vulnerability", "machine-learning", "nmap"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+]
+dependencies = [
+    "scapy>=2.6.1",
+    "psutil>=6.1.1",
+    "customtkinter>=5.2.2",
+    "colorama>=0.4.6",
+    "tqdm>=4.67.1",
+    "pandas>=2.2.3",
+    "numpy>=2.2.0",
+    "joblib>=1.4.2",
+    "scikit-learn==1.8.0",
+    "huggingface_hub>=0.27.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.21",
+    "mypy>=2.2.0",
+    "pylint>=4.0.6",
+    "yapf>=0.43.0",
+]
+
+[project.scripts]
+snm = "launcher:launch"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = [
+    "launcher.py",
+    "app.py",
+    "snm_env.py",
+    "snm_paths.py",
+    "test_groq.py",
+    "gui",
+    "scanner",
+    "model",
+    "reporter",
+    "cli",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
