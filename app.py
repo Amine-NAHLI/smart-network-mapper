@@ -62,6 +62,30 @@ def is_admin():
         return False
 
 
+def relaunch_as_admin():
+    if getattr(sys, "frozen", False):
+        executable = sys.executable
+        params = ""
+    else:
+        executable = sys.executable
+        params = f'"{os.path.abspath(__file__)}"'
+
+    try:
+        ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            executable,
+            params,
+            None,
+            1,
+        )
+        sys.exit(0)
+    except Exception:
+        # Si l'utilisateur refuse l'UAC, on continue en mode normal
+        pass
+
+
+
 # ════════════════════════════════════════════════════════════════
 class SmartNetworkMapper(ctk.CTk):
     """Fenêtre principale — orchestrateur de navigation."""
@@ -243,4 +267,6 @@ def run_app():
 
 
 if __name__ == "__main__":
+    if not is_admin() and os.name == "nt":
+        relaunch_as_admin()
     run_app()

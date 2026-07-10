@@ -37,6 +37,7 @@
 [AI Engine](#-ai-engine) •
 [Automation](#-telegram-bot--n8n-automation) •
 [Build & Deploy](#-build--deploy) •
+[Developer Tooling](#%EF%B8%8F-developer-tooling) •
 [License](#-license)
 
 <br/>
@@ -242,8 +243,8 @@ smart-network-mapper/
 
 **🐍 Python**
 
-- Version **3.8+** required
-- pip up-to-date recommended
+- Version **3.13+** required
+- [`uv`](https://docs.astral.sh/uv/) recommended (auto-installed by `install.sh`)
 
 </td>
 <td>
@@ -265,31 +266,61 @@ smart-network-mapper/
 </tr>
 </table>
 
-### 🚀 Quick Setup (From Source)
+### 🚀 Quick Setup — One-Command Install
+
+The project ships with an automated install script that sets up **everything** (Python check, `uv`, `just`, virtual environment, dependencies):
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/Amine-NAHLI/smart-network-mapper.git
 cd smart-network-mapper
 
-# 2. Create a virtual environment (recommended)
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # Linux/macOS
+# 2. Run the automated installer
+./install.sh          # Linux/macOS/Git Bash
+# or: bash install.sh
 
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure environment variables
+# 3. Configure environment variables
 cp .env.example .env
 # Edit .env and add your GROQ_API_KEY and TELEGRAM_BOT_TOKEN
 
-# 5. Download AI models (~5.1 GB from Hugging Face)
-python model\download_models.py
-
-# 6. Verify installation
-python -c "import scapy, customtkinter, sklearn, huggingface_hub; print('✅ All systems ready!')"
+# 4. Launch!
+just run
 ```
+
+<details>
+<summary><b>📖 What does <code>install.sh</code> do?</b></summary>
+
+| Step | Action |
+|---|---|
+| 1 | ✅ Verifies Python 3.13+ is installed |
+| 2 | 📦 Installs [`uv`](https://docs.astral.sh/uv/) (ultra-fast Python package manager, written in Rust) |
+| 3 | ⚡ Installs [`just`](https://just.systems/) (modern command runner, replaces Makefile) |
+| 4 | 🔍 Detects Npcap on Windows (warns if missing) |
+| 5 | 🛠️ Runs `just setup` → creates `.venv` + installs all dependencies via `uv sync` |
+
+</details>
+
+<details>
+<summary><b>🔧 Manual Setup (without install.sh)</b></summary>
+
+If you prefer manual installation or can't use Bash:
+
+```bash
+# 1. Install uv
+pip install uv
+
+# 2. Create venv and install dependencies
+uv venv --allow-existing
+uv sync --all-extras
+
+# 3. Download AI models (~5.1 GB from Hugging Face)
+uv run python model/download_models.py
+
+# 4. Launch
+uv run python launcher.py
+```
+
+</details>
 
 ### 📦 Portable Windows Installer (No Python Required)
 
@@ -306,18 +337,24 @@ Download the pre-built portable version from the documentation site:
 
 ## 🚀 Usage
 
+All commands are available through the `just` command runner:
+
+```bash
+just            # List all available commands
+```
+
 ### 🎨 Graphical Mode (GUI) — _Recommended_
 
 The full interface with real-time dashboard and cyberpunk visualizations:
 
 ```bash
-python app.py
+just run
 ```
 
 > 💡 **Run as admin** to unlock all raw-socket/ARP features:
 >
 > - **Windows**: Right-click terminal → _Run as Administrator_
-> - **Linux/Mac**: `sudo python app.py`
+> - **Linux/Mac**: `sudo just run`
 
 ### ⌨️ Command-Line Mode (CLI)
 
@@ -328,7 +365,8 @@ SNM provides **two CLI interfaces** for different use cases:
 A step-by-step guided experience with colored menus, progress bars, and formatted tables:
 
 ```bash
-python cli/main.py
+just cli
+# or: uv run python -m cli.main
 ```
 
 | Step | What it does |
@@ -348,13 +386,13 @@ Non-interactive, designed for **n8n**, scripts, and remote execution. Pure JSON 
 
 ```bash
 # Discover active hosts on the local network
-python cli/run_scan.py --discover
+just discover
 
 # Fast scan (24 TCP + 13 UDP, ML prediction, NVD enrichment, Groq AI report)
-python cli/run_scan.py --target 192.168.1.1 --mode fast
+just scan-fast 192.168.1.1
 
 # Full scan (65535 TCP + 16 UDP, complete report)
-python cli/run_scan.py --target 192.168.1.1 --mode full
+just scan-full 192.168.1.1
 ```
 
 | Argument | Example | Behavior |
@@ -454,14 +492,16 @@ All build and release tools are located in the `build_tools/` directory.
 
 ### Compile the Executable
 
-```cmd
-.\build_tools\build.bat
+```bash
+just build
+# or manually: .\build_tools\build.bat
 ```
 
 ### Package the Portable Release (with AI Models)
 
-```cmd
-.\build_tools\package_release.bat
+```bash
+just package
+# or manually: .\build_tools\package_release.bat
 ```
 
 ### Compress to ZIP & Upload to Hugging Face
@@ -509,13 +549,16 @@ npm run deploy
 
 ```bash
 # Run all tests
-pytest tests/
+just test
 
-# Verbose output
-pytest tests/ -v
+# Verbose output with short tracebacks
+just test-verbose
 
 # Specific test
-pytest tests/test_port_scanner.py
+just test tests/test_port_scanner.py
+
+# Or directly via uv/pytest
+uv run pytest tests/ -v
 ```
 
 **Test suite — 37 tests, 0 failures:**
@@ -528,6 +571,75 @@ pytest tests/test_port_scanner.py
 | `test_osint_enricher.py`    | `scanner/osint_enricher.py` | NVD CVE enrichment, API error handling                  |
 | `test_ai_generator.py`      | `reporter/ai_generator.py`  | Groq report generation, SSL, User-Agent                 |
 | `test_model_reliability.py` | `model/predictor.py`        | 18 known vulnerable/safe version cases (≥ 90% accuracy) |
+
+---
+
+## 🛠️ Developer Tooling
+
+This project uses a modern Python development workflow powered by [`uv`](https://docs.astral.sh/uv/) + [`just`](https://just.systems/) + [`yapf`](https://github.com/google/yapf).
+
+### ⚡ Command Runner (`justfile`)
+
+All common tasks are available via `just <command>`:
+
+| Command | Description |
+|---|---|
+| `just` | 📋 List all available commands |
+| `just setup` | 🛠️ Create `.venv` + install all dependencies (dev included) |
+| `just run` | 🎨 Launch the GUI scanner via `launcher.py` |
+| `just gui` | 🎨 Launch the GUI scanner (Alias of `run`) |
+| `just cli` | ⌨️ Launch the interactive terminal CLI |
+| `just discover` | 📡 Auto-detect local subnet and discover active hosts |
+| `just scan-fast <IP>` | ⚡ Run a fast scan on target IP (24 ports + AI/OSINT) |
+| `just scan-full <IP>` | 🔬 Run a complete scan on target IP (65535 ports + AI/OSINT) |
+| `just test` | 🧪 Run the full test suite (`pytest`) |
+| `just test-verbose` | 🧪 Run tests with verbose output |
+| `just lint` | 🔍 Run `ruff` + `mypy` on all source files |
+| `just format` | 🎨 Auto-format all code with `yapf` |
+| `just format-check` | 👀 Check formatting without modifying files |
+| `just build` | 📦 Compile Windows `.exe` with PyInstaller |
+| `just package` | 📦 Create the portable release package |
+| `just test-groq` | 🤖 Test the Groq API connectivity |
+| `just clean` | 🧹 Remove `__pycache__`, caches, and temp outputs |
+
+### 📦 Package Management (`pyproject.toml`)
+
+Dependencies are managed via the standard `pyproject.toml` (PEP 621):
+
+```bash
+# Install all dependencies (runtime + dev)
+uv sync --all-extras
+
+# Add a new dependency
+uv add <package-name>
+
+# Add a dev-only dependency
+uv add --optional dev <package-name>
+```
+
+**Runtime dependencies**: `scapy`, `psutil`, `customtkinter`, `colorama`, `tqdm`, `pandas`, `numpy`, `joblib`, `scikit-learn`, `huggingface_hub`
+
+**Dev dependencies** (`[project.optional-dependencies.dev]`): `pytest`, `ruff`, `mypy`, `pylint`, `yapf`
+
+### 🎨 Code Style (`.style.yapf`)
+
+Formatting is enforced by [YAPF](https://github.com/google/yapf) with the following rules:
+
+| Rule | Value | Rationale |
+|---|---|---|
+| `based_on_style` | `pep8` | Standard Python style |
+| `column_limit` | `88` | Modern limit (same as `black` / `ruff`) |
+| `indent_width` | `4` | PEP 8 standard |
+| `dedent_closing_brackets` | `true` | Cleaner multi-line function calls |
+| `split_before_logical_operator` | `true` | More readable long conditions |
+
+```bash
+# Format all code
+just format
+
+# Check without modifying
+just format-check
+```
 
 ---
 
