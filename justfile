@@ -30,7 +30,7 @@ gui *args:
 
 # Lancer le CLI interactif (mode terminal guidé)
 cli *args:
-    uv run python -m cli.main {{args}}
+    uv run python -m core.main {{args}}
 
 # Découvrir automatiquement les hôtes actifs sur le réseau local (sortie JSON)
 discover:

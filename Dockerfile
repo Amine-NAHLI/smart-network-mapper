@@ -24,4 +24,4 @@ COPY . .
 RUN mkdir -p outputs model
 
 # Définir la commande par défaut (Lance le scan CLI interactif)
-CMD ["python", "cli/main.py"]
+CMD ["python", "core/main.py"]
