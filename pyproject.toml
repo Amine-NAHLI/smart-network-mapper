@@ -45,7 +45,7 @@ dev = [
 ]
 
 [project.scripts]
-snm = "launcher:launch"
+snm = "core.launcher:launch"
 
 [build-system]
 requires = ["hatchling"]
@@ -53,11 +53,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 only-include = [
-    "launcher.py",
-    "app.py",
-    "snm_env.py",
-    "snm_paths.py",
-    "test_groq.py",
+    "core",
     "gui",
     "scanner",
     "model",

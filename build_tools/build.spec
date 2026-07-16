@@ -19,7 +19,7 @@ if os.path.isdir(_model_dir):
             )
 
 a = Analysis(
-    [os.path.join(_base_dir, "launcher.py")],
+    [os.path.join(_base_dir, "core", "launcher.py")],
     pathex=[_base_dir],
     binaries=[],
     datas=[
@@ -30,7 +30,7 @@ a = Analysis(
         *_model_datas,
     ],
     hiddenimports=[
-        "app",
+        "core.app",
         "model.model_downloader_gui",
         "model.model_download",
         "model.predictor",
@@ -42,7 +42,7 @@ a = Analysis(
         "gui.pages.results",
         "gui.pages.history",
         "gui.pages.about",
-        "snm_paths",
+        "core.paths",
         "reporter.html_generator",
         "sklearn.utils._typedefs",
         "sklearn.utils._heap",

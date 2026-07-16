@@ -12,7 +12,7 @@ import webbrowser
 from datetime import datetime
 
 from gui.constants import *
-from snm_paths import get_outputs_dir
+from core.paths import get_outputs_dir
 
 
 class ResultsPage(ctk.CTkFrame):

@@ -20,7 +20,7 @@ from scanner.device_info import get_hostname_dns, get_mac_arp
 from scanner.utils import detect_lan_config
 from model.predictor import predict
 from reporter.html_generator import generate_html_report
-from snm_paths import get_outputs_dir, ensure_outputs_dir
+from core.paths import get_outputs_dir, ensure_outputs_dir
 from gui import db
 
 

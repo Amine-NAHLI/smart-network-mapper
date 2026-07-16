@@ -1,6 +1,6 @@
 import os
 
-from snm_env import load_dotenv
+from core.env import load_dotenv
 
 
 def test_load_dotenv_reads_file(tmp_path):

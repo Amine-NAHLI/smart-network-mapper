@@ -2,7 +2,7 @@ import ctypes
 import sys
 import os
 
-from snm_paths import (
+from core.paths import (
     get_base_dir,
     get_model_dir,
     fix_frozen_stdio,
@@ -52,7 +52,7 @@ def launch():
     os.makedirs(get_model_dir(), exist_ok=True)
 
     if models_exist(base):
-        from app import run_app
+        from core.app import run_app
         run_app()
     else:
         from model.model_downloader_gui import run_downloader

@@ -218,7 +218,7 @@ def save_json(target_ip, resultats, ml_predictions={}):
     """
     sauvegarde et Garantit une seule sauvegarde par scan.
     """
-    from snm_paths import ensure_outputs_dir, get_outputs_dir
+    from core.paths import ensure_outputs_dir, get_outputs_dir
     ensure_outputs_dir()
 
     date_jour = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

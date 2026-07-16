@@ -1,7 +1,7 @@
 import os
 import pytest
 from gui import db
-import snm_paths
+from core import paths as snm_paths
 
 def test_db_operations(tmp_path, monkeypatch):
     # Mock le répertoire de base pour ne pas polluer le vrai dossier

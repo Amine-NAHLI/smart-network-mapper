@@ -12,7 +12,7 @@ import os
 import sqlite3
 from datetime import datetime
 
-from snm_paths import get_outputs_dir, ensure_outputs_dir
+from core.paths import get_outputs_dir, ensure_outputs_dir
 
 
 def _db_path() -> str:

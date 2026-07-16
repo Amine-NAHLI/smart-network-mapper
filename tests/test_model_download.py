@@ -29,7 +29,7 @@ def test_file_ok_main_model(tmp_path):
 
 def test_download_all_models_mocked(monkeypatch, tmp_path):
     # Mock get_base_dir pour que get_model_dir pointe vers le dossier temporaire
-    import snm_paths
+    from core import paths as snm_paths
     monkeypatch.setattr(snm_paths, "get_base_dir", lambda: str(tmp_path))
     
     # Mock la fonction hf_hub_download pour créer de faux fichiers

@@ -3,7 +3,7 @@ import ssl
 import urllib.request
 import json
 
-from snm_env import load_dotenv
+from core.env import load_dotenv
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(project_root)

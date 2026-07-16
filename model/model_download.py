@@ -4,7 +4,7 @@ Téléchargement des modèles IA (Hugging Face) — utilisé par l'exe et downlo
 import os
 from typing import Callable, Optional
 
-from snm_paths import (
+from core.paths import (
     get_model_dir,
     get_hf_cache_dir,
     fix_frozen_stdio,

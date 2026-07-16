@@ -2,7 +2,7 @@ import customtkinter as ctk
 import threading
 import os
 
-from snm_paths import get_base_dir, fix_frozen_stdio, configure_hf_download_env
+from core.paths import get_base_dir, fix_frozen_stdio, configure_hf_download_env
 from model.model_download import download_all_models
 
 fix_frozen_stdio()
@@ -160,7 +160,7 @@ class DownloaderApp(ctk.CTk):
 
     def _launch_app(self):
         self.destroy()
-        from app import run_app
+        from core.app import run_app
         run_app()
 
 

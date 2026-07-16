@@ -16,7 +16,7 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 
-from snm_paths import ensure_resources_dir, get_resources_dir
+from core.paths import ensure_resources_dir, get_resources_dir
 
 IANA_CSV_URL = "https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv"
 CACHE_FILENAME = "iana_ports_cache.json"

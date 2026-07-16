@@ -42,7 +42,7 @@ from gui.pages.new_scan import NewScanPage
 from gui.pages.results import ResultsPage
 from gui.pages.history import HistoryPage
 from gui.pages.about import AboutPage
-from snm_paths import get_outputs_dir, fix_frozen_stdio, configure_hf_download_env
+from core.paths import get_outputs_dir, fix_frozen_stdio, configure_hf_download_env
 from scanner.iana_manager import init_iana_database
 
 fix_frozen_stdio()

@@ -17,7 +17,7 @@ import threading
 import numpy as np
 import pandas as pd
 
-from snm_paths import get_model_dir
+from core.paths import get_model_dir
 
 
 def _artifact_paths():

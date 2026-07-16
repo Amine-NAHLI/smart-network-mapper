@@ -22,11 +22,11 @@ setup:
 
 # Lancer le scanner réseau (GUI via le fichier app.py - avec auto-élévation d'admin)
 run *args:
-    uv run python app.py {{args}}
+    uv run python -m core.app {{args}}
 
 # Lancer la version GUI (Alias de run)
 gui *args:
-    uv run python app.py {{args}}
+    uv run python -m core.app {{args}}
 
 # Lancer le CLI interactif (mode terminal guidé)
 cli *args:
@@ -58,16 +58,16 @@ test-verbose:
 
 # Vérifier la qualité du code (linters)
 lint:
-    uv run ruff check launcher.py app.py snm_env.py snm_paths.py test_groq.py gui/ scanner/ model/ reporter/ cli/ tests/
-    uv run mypy launcher.py app.py snm_env.py snm_paths.py test_groq.py gui/ scanner/ model/ reporter/ cli/
+    uv run ruff check core/ gui/ scanner/ model/ reporter/ cli/ tests/
+    uv run mypy core/ gui/ scanner/ model/ reporter/ cli/
 
 # Formater proprement le code
 format:
-    uv run yapf -ir launcher.py app.py snm_env.py snm_paths.py test_groq.py gui/ scanner/ model/ reporter/ cli/ tests/
+    uv run yapf -ir core/ gui/ scanner/ model/ reporter/ cli/ tests/
 
 # Vérifier le formatage sans modifier les fichiers
 format-check:
-    uv run yapf -dr launcher.py app.py snm_env.py snm_paths.py test_groq.py gui/ scanner/ model/ reporter/ cli/ tests/
+    uv run yapf -dr core/ gui/ scanner/ model/ reporter/ cli/ tests/
 
 # ──────────────────────────────────────────────────
 #  Build & Release
@@ -87,7 +87,7 @@ package:
 
 # Tester la connexion à l'API Groq
 test-groq:
-    uv run python test_groq.py
+    uv run python tests/test_groq_standalone.py
 
 # Nettoyer les fichiers temporaires et caches
 clean:

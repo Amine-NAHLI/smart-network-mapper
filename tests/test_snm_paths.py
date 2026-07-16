@@ -1,5 +1,5 @@
 import os
-import snm_paths
+from core import paths as snm_paths
 
 def test_paths():
     # Test que get_base_dir retourne un chemin valide existant
