@@ -36,24 +36,39 @@ def generate_ai_report(scan_data, api_key=None, output_path="outputs/ai_report.m
             "WARNING": f"Alerte : Le scan a détecté {len(ports)} ports ouverts. Pour éviter un dépassement de mémoire (Context Overflow), seuls les {MAX_PORTS_IA} premiers ports sont listés ci-dessous."
         })
         
+    # Intégration du contexte MITRE ATT&CK et Threat Intelligence
+    try:
+        from .skills_knowledge import get_mitre_info, format_mitre_context_for_llm
+    except ImportError:
+        try:
+            from reporter.skills_knowledge import get_mitre_info, format_mitre_context_for_llm
+        except ImportError:
+            from skills_knowledge import get_mitre_info, format_mitre_context_for_llm
+
+    mitre_context = format_mitre_context_for_llm(ports_to_process)
+
     for p in ports_to_process:
         port_num = p.get("port")
         service = p.get("service", "Inconnu")
         version = p.get("version", "N/A")
         vulnerable = p.get("label", "Inconnu")
         cves = [c.get("cve_id") for c in p.get("cves", [])]
+        has_cisa_kev = any(c.get("is_cisa_kev", False) for c in p.get("cves", []))
+        mitre = get_mitre_info(port_num, service)
         
         ports_summary.append({
             "port": port_num,
             "service": service,
             "version": version,
             "classification_ia": vulnerable,
+            "mitre_attack": f"{mitre['technique_id']} - {mitre['technique_name']} ({mitre['tactic']})",
+            "cisa_kev_active_exploit": "OUI (ALERTE CRITIQUE)" if has_cisa_kev else "Non",
             "cves_trouvees": cves
         })
 
-    # Construction du prompt en français
+    # Construction du prompt en français enrichi MITRE & CISA KEV
     prompt = f"""
-Vous êtes un expert en cybersécurité et en test d'intrusion.
+Vous êtes un auditeur senior en cybersécurité (expert NIST SP 800-115 et MITRE ATT&CK).
 Analysez les données de scan de vulnérabilités suivantes pour l'hôte cible {target} (effectué le {date}) et rédigez un rapport d'audit de sécurité professionnel, clair et exploitable.
 
 Données du Scan :
@@ -64,12 +79,15 @@ Données du Scan :
 - Détails des ports ouverts :
 {json.dumps(ports_summary, indent=2, ensure_ascii=False)}
 
-Votre rapport doit être rédigé entièrement en français et au format Markdown. Utilisez une structure claire avec les sections suivantes :
-1. **Synthèse de la Sécurité Globale** : Un avis résumé sur le niveau de risque général de la machine (Faible, Moyen, Élevé, Critique) avec une explication synthétique.
-2. **Analyse Détaillée par Port/Service** : Pour chaque port ouvert, expliquez ce qu'est le service, s'il présente un risque ou des CVEs, et la pertinence de la détection de l'IA.
-3. **Plan de Remédiation** : Donnez des recommandations précises et ordonnées pour sécuriser cette machine cible (ex: fermer des ports, mettre à jour, masquer les bannières, etc.).
+Contexte de Cartographie des Menaces (MITRE ATT&CK & Durcissement) :
+{mitre_context}
 
-Soyez concis, professionnel et direct dans vos analyses. N'inventez pas de fausses vulnérabilités, tenez-vous en aux faits détectés par le scan.
+Votre rapport doit être rédigé entièrement en français et au format Markdown. Utilisez une structure d'audit industrielle avec les sections suivantes :
+1. **Synthèse de la Sécurité Globale** : Un avis résumé sur le niveau de risque général de la machine (Faible, Moyen, Élevé, Critique). Si des failles CISA KEV (activement exploitées) sont présentes, émettez une alerte d'urgence immédiate.
+2. **Cartographie des Menaces (MITRE ATT&CK) & Analyse par Port** : Pour chaque port ouvert, décrivez le risque d'exposition, la technique MITRE associée (`TXXXX`) et l'analyse des CVEs détectées.
+3. **Plan de Durcissement Priorisé (Playbooks de Remédiation)** : Donnez des recommandations concrètes et ordonnées basées sur les meilleures pratiques de durcissement (fermeture de ports, mise à niveau, configuration TLS, pare-feu, isolation).
+
+Soyez concis, professionnel et direct. Tenez-vous rigoureusement aux faits observés lors du scan.
 """
 
     # Appel de l'API Groq via urllib

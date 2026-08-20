@@ -38,6 +38,13 @@ class TestOsintHelpers:
         assert parsed["cve_id"] == "CVE-2024-1234"
         assert parsed["cvss_score"] == 9.8
         assert parsed["severity"] == "CRITICAL"
+        assert parsed["is_cisa_kev"] is False
+
+    def test_cisa_kev_detection(self):
+        from scanner.osint_enricher import is_cisa_kev
+        assert is_cisa_kev("CVE-2024-6387") is True   # regreSSHion
+        assert is_cisa_kev("CVE-2021-44228") is True  # Log4Shell
+        assert is_cisa_kev("CVE-2099-0000") is False
 
 
 class TestQueryNvd:

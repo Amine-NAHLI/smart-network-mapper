@@ -174,11 +174,19 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         
         # Couleur IA
         ia_color = "var(--red)" if is_vuln else "var(--green)"
+
+        # Récupération de la technique MITRE
+        try:
+            from reporter.skills_knowledge import get_mitre_info
+            mitre_data = get_mitre_info(p.get("port", 0), p.get("service", ""))
+            mitre_badge = f'<br><span style="color: #a78bfa; font-size: 10px; font-family: monospace;">🎯 {mitre_data["technique_id"]} ({mitre_data["tactic"].split("/")[0].strip()})</span>'
+        except Exception:
+            mitre_badge = ""
         
         html_template += f"""
                     <tr class="{row_class}">
                         <td><b style="color: var(--cyan)">{port_num}</b>/{proto}</td>
-                        <td>{service_esc}</td>
+                        <td>{service_esc}{mitre_badge}</td>
                         <td style="color: var(--gray); font-size: 12px;">{version_esc}</td>
                         <td>{statut}</td>
                         <td style="color: {ia_color}; font-weight: bold;">{label}</td>
@@ -191,7 +199,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                     </tr>
         """
         
-    # ── Section CVE OSINT ──────────────────────────────────────
+    # ── Section CVE OSINT & CISA KEV ───────────────────────────
     # Collecter toutes les CVEs de tous les ports (en clonant les dicts pour éviter les conflits de références partagées)
     all_cves = []
     for p in ports:
@@ -206,7 +214,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     
     total_cves = len(all_cves)
     critical_cves = len([c for c in all_cves if c.get("cvss_score", 0) >= 9.0])
-    high_cves = len([c for c in all_cves if 7.0 <= c.get("cvss_score", 0) < 9.0])
+    cisa_kev_count = len([c for c in all_cves if c.get("is_cisa_kev", False)])
 
     html_template += """
                 </tbody>
@@ -214,15 +222,28 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     """
 
     if all_cves:
+        cisa_alert_html = ""
+        if cisa_kev_count > 0:
+            cisa_alert_html = f"""
+            <div style="background: rgba(239, 68, 68, 0.15); border-left: 4px solid var(--red); padding: 16px; border-radius: 4px; margin-bottom: 24px;">
+                <b style="color: var(--red); font-size: 14px;">🔥 ALERTE DE THREAT INTELLIGENCE (CISA KEV) :</b><br>
+                <span style="color: #fca5a5; font-size: 13px;">
+                    {cisa_kev_count} vulnérabilité(s) activement exploitée(s) dans la nature détectée(s). Correctif d'urgence prioritaire requis.
+                </span>
+            </div>
+            """
+
         html_template += f"""
-            <!-- ═══════════ SECTION OSINT / CVE ═══════════ -->
+            <!-- ═══════════ SECTION OSINT / CVE / CISA KEV ═══════════ -->
             <div style="margin-top: 50px;">
                 <h2 style="color: var(--cyan); font-family: 'Courier New', monospace; letter-spacing: 2px; border-bottom: 1px solid #1f2937; padding-bottom: 10px;">
-                    🌐 ENRICHISSEMENT OSINT — CVEs CONNUES
+                    🌐 ENRICHISSEMENT OSINT — CVEs & CISA KEV
                 </h2>
                 <p style="color: var(--gray); margin-bottom: 20px;">
-                    Données issues de la base <b style="color: var(--cyan);">NVD (NIST)</b> — National Vulnerability Database
+                    Données corrélées depuis <b style="color: var(--cyan);">NVD (NIST)</b> et catalogue <b style="color: var(--red);">CISA KEV</b> (Known Exploited Vulnerabilities)
                 </p>
+
+                {cisa_alert_html}
 
                 <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 30px;">
                     <div class="stat-card">
@@ -234,8 +255,8 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                         <span class="stat-label">Critiques (CVSS ≥ 9)</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-val" style="color: #ff8c00">{high_cves}</span>
-                        <span class="stat-label">Élevées (CVSS 7-9)</span>
+                        <span class="stat-val" style="color: #f87171">{cisa_kev_count}</span>
+                        <span class="stat-label">Exploits Actifs (CISA KEV)</span>
                     </div>
                 </div>
 
@@ -258,6 +279,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
             cve_id = cve.get("cve_id", "N/A")
             url = cve.get("url", "#")
             desc = cve.get("description", "")
+            is_kev = cve.get("is_cisa_kev", False)
             severity = html.escape(str(cve.get("severity", "NONE")))
             cve_id = html.escape(str(cve.get("cve_id", "N/A")))
             desc = html.escape(str(cve.get("description", "Pas de description")))
@@ -275,10 +297,12 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
             service_esc = html.escape(str(cve.get('_service')))
             pub_esc = html.escape(str(cve.get('published', 'N/A')))
             
+            kev_badge = ' <span style="background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid #ef4444; border-radius: 3px; padding: 1px 5px; font-size: 10px; font-weight: bold; font-family: monospace;">🔥 CISA KEV</span>' if is_kev else ''
+
             html_template += f"""
                         <tr>
                             <td><b style="color: var(--cyan)">{port_esc}</b> <span style="color: var(--gray); font-size: 11px;">{service_esc}</span></td>
-                            <td><b>{cve_id}</b></td>
+                            <td><b>{cve_id}</b>{kev_badge}</td>
                             <td><b>{cvss}</b></td>
                             <td><span class="status-badge {badge_class}">{severity}</span></td>
                             <td style="color: var(--gray); font-size: 12px;">{desc}</td>

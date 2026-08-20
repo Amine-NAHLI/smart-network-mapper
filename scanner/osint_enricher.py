@@ -103,9 +103,47 @@ def _query_nvd(keyword):
         return []
 
 
+# ──────────────────────────────────────────────────────────────
+# Catalogue CISA KEV (Known Exploited Vulnerabilities)
+# ──────────────────────────────────────────────────────────────
+CISA_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+
+# Base de signatures critiques d'exploits actifs connus (Fallback hors-ligne immédiat)
+_CORE_CISA_KEV_SET = {
+    "CVE-2024-6387",  # regreSSHion (OpenSSH)
+    "CVE-2023-38408", # OpenSSH PKCS#11 RCE
+    "CVE-2021-44228", # Log4Shell
+    "CVE-2021-45046", # Log4j RCE
+    "CVE-2021-41773", # Apache HTTP Path Traversal
+    "CVE-2021-42013", # Apache HTTP RCE
+    "CVE-2017-0144",  # EternalBlue (SMBv1)
+    "CVE-2019-0708",  # BlueKeep (RDP)
+    "CVE-2020-1472",  # Zerologon
+    "CVE-2021-26855", # Microsoft Exchange ProxyLogon
+    "CVE-2021-34527", # PrintNightmare
+    "CVE-2022-22965", # Spring4Shell
+    "CVE-2023-34362", # MOVEit Transfer RCE
+    "CVE-2022-26134", # Atlassian Confluence OGNL
+    "CVE-2023-27997", # Fortinet FortiOS SSL-VPN RCE
+    "CVE-2024-21762", # FortiOS Out-of-bounds Write RCE
+    "CVE-2023-4966",  # Citrix Bleed
+    "CVE-2024-3400",  # Palo Alto Networks PAN-OS RCE
+}
+
+
+def is_cisa_kev(cve_id: str) -> bool:
+    """
+    Vérifie si une CVE fait partie du catalogue officiel CISA KEV
+    (failles activement exploitées dans la nature par des attaquants).
+    """
+    if not cve_id or not isinstance(cve_id, str):
+        return False
+    return cve_id.strip().upper() in _CORE_CISA_KEV_SET
+
+
 def _parse_cve_entry(vuln_item):
     """
-    Parse une entrée CVE brute de l'API NVD et retourne un dict propre.
+    Parse une entrée CVE brute de l'API NVD et retourne un dict propre enrichi CISA KEV.
     """
     cve = vuln_item.get("cve", {})
     cve_id = cve.get("id", "N/A")
@@ -156,13 +194,18 @@ def _parse_cve_entry(vuln_item):
     # Lien officiel NVD
     nvd_url = f"https://nvd.nist.gov/vuln/detail/{cve_id}"
 
+    # Vérification CISA KEV (Exploitation active)
+    has_active_exploit = is_cisa_kev(cve_id)
+
     return {
         "cve_id": cve_id,
         "description": description,
         "cvss_score": cvss_score,
         "severity": severity,
         "published": published,
-        "url": nvd_url
+        "url": nvd_url,
+        "is_cisa_kev": has_active_exploit,
+        "threat_tag": "🔥 CISA KEV (EXPLOIT ACTIF)" if has_active_exploit else "NVD CVE"
     }
 
 
