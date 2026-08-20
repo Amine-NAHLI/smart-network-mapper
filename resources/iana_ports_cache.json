@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "last_updated": "2026-06-28T01:48:32.887773+00:00",
-    "timestamp": 1782611312,
-    "total_entries": 11487
+    "last_updated": "2026-08-20T12:41:18.292633+00:00",
+    "timestamp": 1787229678,
+    "total_entries": 11488
   },
   "ports": {
     "1/tcp": {
@@ -4771,7 +4771,7 @@
     },
     "700/udp": {
       "service": "epp",
-      "description": "Extensible Provisioning Protocol"
+      "description": "EPP running over QUIC"
     },
     "701/tcp": {
       "service": "lmp",
@@ -37799,7 +37799,11 @@
     },
     "7123/tcp": {
       "service": "snif",
-      "description": "End-to-end TLS Relay Control Connection"
+      "description": "SNIF End-to-End TLS Relay Control Connection"
+    },
+    "7123/udp": {
+      "service": "snif",
+      "description": "SNIF End-to-End TLS Relay over QUIC"
     },
     "7128/tcp": {
       "service": "scenidm",

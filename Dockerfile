@@ -1,5 +1,5 @@
 # Utiliser une image Python officielle légère
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Mettre à jour le système et installer Nmap/Scapy (requis pour les scans réseau avancés)
 RUN apt-get update && apt-get install -y \

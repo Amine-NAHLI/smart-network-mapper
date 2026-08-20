@@ -95,7 +95,7 @@ class SmartNetworkMapper(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
 
-        self.title("SMART NETWORK MAPPER v1.0")
+        self.title("SMART NETWORK MAPPER v1.1")
         self.after(0, lambda: self.state('zoomed'))
         self.configure(fg_color=NAVY_BLACK)
 
@@ -202,7 +202,7 @@ class SmartNetworkMapper(ctk.CTk):
             btn.pack(side="left", fill="both", expand=True)
             self.nav_buttons[page] = btn
 
-        ctk.CTkLabel(sb, text="v1.0.0 | Python", font=self.FONT_MONO_SM,
+        ctk.CTkLabel(sb, text="v1.1.0 | Python", font=self.FONT_MONO_SM,
                      text_color=TEXT_MUTED).grid(row=10, column=0, padx=20, pady=16, sticky="sw")
 
     def _build_content(self):

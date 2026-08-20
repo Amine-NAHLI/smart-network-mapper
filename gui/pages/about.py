@@ -59,7 +59,7 @@ class AboutPage(ctk.CTkFrame):
         # 3 Info cards
         cards_row = ctk.CTkFrame(center, fg_color="transparent")
         cards_row.pack(pady=(0, 20))
-        for label, value in [("VERSION", "1.0.0"),
+        for label, value in [("VERSION", "1.1.0"),
                               ("AUTHOR",  "Amine Nahli"),
                               ("LICENSE", "MIT / ACADEMIC")]:
             cv = tk.Canvas(cards_row, width=180, height=82,

@@ -291,7 +291,7 @@ def main():
     group.add_argument("--discover", action="store_true", help="Auto-detect subnet and discover active hosts")
     group.add_argument("--target", type=str, help="Target IP address for scanning")
     
-    parser.add_argument("--mode", choices=["fast", "full"], default="fast", help="Scan mode: fast (22 top ports) or full (1-65535)")
+    parser.add_argument("--mode", choices=["fast", "full"], default="fast", help="Scan mode: fast (24 top ports) or full (1-65535)")
     
     args = parser.parse_args()
 

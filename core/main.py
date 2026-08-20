@@ -116,7 +116,7 @@ def choisir_mode_scan():
     print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════╗")
     print(f"║              SÉLECTION DU MODE DE SCAN                  ║")
     print(f"╠══════════════════════════════════════════════════════════╣")
-    print(f"║  {Fore.GREEN}[ 1 ]{Fore.CYAN}  Scan Rapide      — 22 ports communs   {Fore.YELLOW}(~5 sec){Fore.CYAN}    ║")
+    print(f"║  {Fore.GREEN}[ 1 ]{Fore.CYAN}  Scan Rapide      — 24 ports communs   {Fore.YELLOW}(~5 sec){Fore.CYAN}    ║")
     print(f"║  {Fore.YELLOW}[ 2 ]{Fore.CYAN}  Scan Complet     — 65 535 ports       {Fore.YELLOW}(~5-10 min){Fore.CYAN} ║")
     print(f"║  {Fore.BLUE}[ 3 ]{Fore.CYAN}  Scan Personnalisé — port(s) précis    {Fore.YELLOW}(immédiat){Fore.CYAN}  ║")
     print(f"╚══════════════════════════════════════════════════════════╝{Style.RESET_ALL}")
@@ -125,7 +125,7 @@ def choisir_mode_scan():
         choix = input(f"\n  {Fore.WHITE}Votre choix (1/2/3) : {Style.RESET_ALL}").strip()
 
         if choix == "1":
-            print(f"\n  {Fore.GREEN}[✔] Mode sélectionné : Scan Rapide — 22 ports{Style.RESET_ALL}")
+            print(f"\n  {Fore.GREEN}[✔] Mode sélectionné : Scan Rapide — 24 ports{Style.RESET_ALL}")
             print(f"  {Fore.YELLOW}[~] Durée estimée : environ 5 secondes{Style.RESET_ALL}")
             return TOP_PORTS
 
