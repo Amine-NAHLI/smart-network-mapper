@@ -120,6 +120,9 @@ class ResultsPage(ctk.CTkFrame):
         self.tree_scroll.pack(side="right", fill="y")
         self.tree.configure(yscrollcommand=self.tree_scroll.set)
 
+        self.tree.bind("<Double-1>", self._on_row_double_click)
+        self.tree.bind("<Return>", self._on_row_double_click)
+
         self.tree.tag_configure("open",       foreground=GREEN_SUCCESS)
         self.tree.tag_configure("vulnerable", foreground=RED_DANGER)
         self.tree.tag_configure("filtered",   foreground=AMBER_WARNING)
@@ -230,6 +233,91 @@ class ResultsPage(ctk.CTkFrame):
         self.badge_open.configure(text=str(open_count))
         self.badge_vuln.configure(text=str(vuln_count))
         self.badge_safe.configure(text=str(max(0, open_count - vuln_count)))
+
+    def _on_row_double_click(self, event=None):
+        selected_item = self.tree.focus()
+        if not selected_item:
+            return
+        values = self.tree.item(selected_item, "values")
+        if not values:
+            return
+
+        port_str = str(values[0])
+        results = getattr(self.app, "shared_scan_results", [])
+        port_data = next((r for r in results if str(r.get("port")) == port_str), None)
+        if not port_data:
+            return
+
+        # Importation des métadonnées MITRE ATT&CK
+        try:
+            from reporter.skills_knowledge import get_mitre_info
+            mitre = get_mitre_info(int(port_str), str(port_data.get("service", "")))
+        except Exception:
+            mitre = {
+                "technique_id": "T1046",
+                "technique_name": "Network Service Discovery",
+                "tactic": "Discovery",
+                "remediation_playbook": "Restreindre l'exposition du service.",
+            }
+
+        # Construction de la fenêtre Modale TopLevel Cyberpunk
+        modal = ctk.CTkToplevel(self)
+        modal.title(f"CYBER INSPECTOR — PORT {port_str}")
+        modal.geometry("620x520")
+        modal.configure(fg_color=NAVY_BLACK)
+        modal.grab_set()  # Modal grab
+
+        top_bar = ctk.CTkFrame(modal, height=44, fg_color=NAVY_SIDEBAR, corner_radius=0)
+        top_bar.pack(fill="x")
+        ctk.CTkLabel(top_bar, text=f"🔍 AUDIT SÉCURITÉ — PORT {port_str} ({port_data.get('service', 'Inconnu').upper()})",
+                     font=self.app.FONT_MONO_MD, text_color=CYAN_ACCENT).pack(side="left", padx=16)
+
+        scroll = ctk.CTkScrollableFrame(modal, fg_color=NAVY_BLACK)
+        scroll.pack(fill="both", expand=True, padx=16, pady=12)
+
+        # 1. Identité Technique
+        box_id = ctk.CTkFrame(scroll, fg_color=NAVY_CARD, border_color=BORDER_COLOR, border_width=1, corner_radius=6)
+        box_id.pack(fill="x", pady=(0, 10), padx=4)
+        ctk.CTkLabel(box_id, text="[ IDENTITÉ SERVICE & VERSION ]", font=self.app.FONT_MONO_SM, text_color=CYAN_ACCENT).pack(anchor="w", padx=12, pady=(8, 4))
+        
+        info_lines = (
+            f"• Port / Protocole : {port_str} / {port_data.get('protocole', 'TCP')}\n"
+            f"• Service identifié : {port_data.get('service', 'N/A')}\n"
+            f"• Version détectée  : {port_data.get('version', 'N/A')}\n"
+            f"• Classification IA : {port_data.get('label', 'N/A')} (Confiance: {port_data.get('confidence', 0)*100:.1f}%)"
+        )
+        ctk.CTkLabel(box_id, text=info_lines, font=self.app.FONT_MONO_SM, text_color=TEXT_PRIMARY, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+
+        # 2. Matrice MITRE ATT&CK
+        box_mitre = ctk.CTkFrame(scroll, fg_color=NAVY_CARD, border_color=BORDER_COLOR, border_width=1, corner_radius=6)
+        box_mitre.pack(fill="x", pady=(0, 10), padx=4)
+        ctk.CTkLabel(box_mitre, text="[ CARTOGRAPHIE MITRE ATT&CK ]", font=self.app.FONT_MONO_SM, text_color="#a78bfa").pack(anchor="w", padx=12, pady=(8, 4))
+        
+        mitre_text = (
+            f"• Technique : {mitre['technique_id']} — {mitre['technique_name']}\n"
+            f"• Tactique  : {mitre['tactic']}\n"
+            f"• Playbook  : {mitre['remediation_playbook']}"
+        )
+        ctk.CTkLabel(box_mitre, text=mitre_text, font=self.app.FONT_MONO_SM, text_color=TEXT_PRIMARY, justify="left", wraplength=540).pack(anchor="w", padx=12, pady=(0, 8))
+
+        # 3. CVEs & Threat Intel CISA KEV
+        cves = port_data.get("cves", [])
+        box_cve = ctk.CTkFrame(scroll, fg_color=NAVY_CARD, border_color=BORDER_COLOR, border_width=1, corner_radius=6)
+        box_cve.pack(fill="x", pady=(0, 10), padx=4)
+        ctk.CTkLabel(box_cve, text=f"[ VULNÉRABILITÉS & CISA KEV ({len(cves)}) ]", font=self.app.FONT_MONO_SM, text_color=RED_DANGER).pack(anchor="w", padx=12, pady=(8, 4))
+        
+        if cves:
+            for c in cves[:5]:
+                cve_id = c.get("cve_id", "N/A")
+                score = c.get("cvss_score", 0)
+                is_kev = c.get("is_cisa_kev", False)
+                kev_tag = " 🔥 CISA KEV (ACTIF)" if is_kev else ""
+                cve_line = f"• {cve_id} (CVSS {score}){kev_tag} : {c.get('description', '')[:90]}..."
+                ctk.CTkLabel(box_cve, text=cve_line, font=self.app.FONT_MONO_SM, text_color="#fca5a5" if is_kev else TEXT_SECONDARY, justify="left", wraplength=540).pack(anchor="w", padx=12, pady=2)
+        else:
+            ctk.CTkLabel(box_cve, text="• Aucune CVE critique connue sur ce service.", font=self.app.FONT_MONO_SM, text_color=GREEN_SUCCESS).pack(anchor="w", padx=12, pady=(0, 8))
+
+        ctk.CTkButton(modal, text="[ FERMER ]", font=self.app.FONT_MONO_MD, fg_color=CYAN_ACCENT, text_color=NAVY_BLACK, hover_color="#0099BB", height=32, command=modal.destroy).pack(pady=(4, 12))
 
     def _open_html_report(self):
         report_path = os.path.abspath(os.path.join(get_outputs_dir(), "report.html"))
