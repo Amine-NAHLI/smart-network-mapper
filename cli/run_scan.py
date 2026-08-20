@@ -96,6 +96,28 @@ def handle_discover():
 
 def handle_scan(target_ip, mode):
     """Effectue un scan de ports sur une cible, prédit les risques avec l'IA et enregistre les rapports."""
+    import ipaddress
+    import socket
+    import re
+
+    # ── Validation Stricte de la Cible ──
+    target_clean = str(target_ip).strip()
+    is_valid = False
+    try:
+        ipaddress.ip_address(target_clean)
+        is_valid = True
+    except ValueError:
+        # Autoriser les noms d'hôtes standards sûrs (ex: scanme.nmap.org, localhost)
+        if re.match(r'^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$', target_clean):
+            try:
+                socket.gethostbyname(target_clean)
+                is_valid = True
+            except OSError:
+                is_valid = False
+
+    if not is_valid:
+        _emit_error(f"Format d'adresse cible invalide ou non résoluble : '{target_ip}'", phase="validation")
+
     # Détermination des ports à scanner
     if mode == "full":
         ports_to_scan = list(range(1, 65536))
@@ -201,6 +223,16 @@ def handle_scan(target_ip, mode):
     outputs_dir = os.path.join(project_root, "outputs")
     os.makedirs(outputs_dir, exist_ok=True)
     
+    # Sauvegarde horodatée unique pour l'historique permanent
+    safe_target = target_ip.replace(":", "_").replace("/", "_")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    history_dir = os.path.join(outputs_dir, "scans")
+    os.makedirs(history_dir, exist_ok=True)
+    unique_json_path = os.path.join(history_dir, f"scan_{safe_target}_{ts}.json")
+    with open(unique_json_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    # Maintenir scan_result.json pour compatibilité directe
     json_path = os.path.join(outputs_dir, "scan_result.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
@@ -208,16 +240,16 @@ def handle_scan(target_ip, mode):
     try:
         from gui.db import init_db, insert_scan
         init_db()
-        open_ports = len(data["ports"])
-        vuln_ports = sum(1 for p in data["ports"] if p.get("vulnerable") == 1)
+        open_ports_count = len(data["ports"])
+        vuln_ports_count = sum(1 for p in data["ports"] if p.get("vulnerable") == 1)
         insert_scan(
             target=target_ip,
             date=date_jour,
             duration=0.0,
-            open_ports=open_ports,
-            vuln_ports=vuln_ports,
+            open_ports=open_ports_count,
+            vuln_ports=vuln_ports_count,
             total_ports=len(resultats_bruts),
-            json_path=json_path,
+            json_path=unique_json_path,
             source="CLI Auto",
             raw_data=json.dumps(data, ensure_ascii=False)
         )

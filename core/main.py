@@ -248,24 +248,35 @@ def save_json(target_ip, resultats, ml_predictions={}):
                 "label": pred.get("label", "N/A")
             })
 
-    output_path = os.path.join(get_outputs_dir(), "scan_result.json") #créer le fichier scan_result.json dans le dossier outputs
+    outputs_dir = get_outputs_dir()
+    
+    # Sauvegarde horodatée unique pour l'historique permanent
+    safe_target = str(target_ip).replace(":", "_").replace("/", "_")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    history_dir = os.path.join(outputs_dir, "scans")
+    os.makedirs(history_dir, exist_ok=True)
+    unique_json_path = os.path.join(history_dir, f"scan_{safe_target}_{ts}.json")
+    with open(unique_json_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
-    with open(output_path, "w", encoding="utf-8") as f: #ouvrir le fichier scan_result.json en mode écriture
-        json.dump(data, f, indent=4, ensure_ascii=False) #écrire les données dans le fichier scan_result.json
+    # Maintenir scan_result.json pour compatibilité directe
+    output_path = os.path.join(outputs_dir, "scan_result.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
     try:
         from gui.db import init_db, insert_scan
         init_db()
-        open_ports = len(data["ports"])
-        vuln_ports = sum(1 for p in data["ports"] if p.get("vulnerable") == 1)
+        open_ports_count = len(data["ports"])
+        vuln_ports_count = sum(1 for p in data["ports"] if p.get("vulnerable") == 1)
         insert_scan(
             target=target_ip,
             date=date_jour,
             duration=0.0,
-            open_ports=open_ports,
-            vuln_ports=vuln_ports,
+            open_ports=open_ports_count,
+            vuln_ports=vuln_ports_count,
             total_ports=len(resultats),
-            json_path=output_path,
+            json_path=unique_json_path,
             source="CLI Interactive",
             raw_data=json.dumps(data, ensure_ascii=False)
         )

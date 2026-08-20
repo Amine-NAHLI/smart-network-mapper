@@ -156,18 +156,32 @@ class HistoryPage(ctk.CTkFrame):
             messagebox.showwarning("History", "Scan not found in database.")
             return
 
+        data = None
         json_path = scan.get("json_path", "")
-        if not json_path or not os.path.exists(json_path):
-            messagebox.showwarning("History",
-                                   "JSON result file not found on disk.\n"
-                                   f"Expected: {json_path}")
-            return
+        if json_path and os.path.exists(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                data = None
 
-        try:
-            with open(json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception as e:
-            messagebox.showerror("History", f"Failed to read JSON:\n{e}")
+        # Fallback ultra-robuste sur la colonne raw_data de SQLite
+        if data is None:
+            raw_str = scan.get("raw_data", "")
+            if raw_str:
+                try:
+                    raw_obj = json.loads(raw_str)
+                    if isinstance(raw_obj, list):
+                        data = {"cible": scan["target"], "duration_seconds": scan["duration"], "ports": raw_obj}
+                    elif isinstance(raw_obj, dict):
+                        data = raw_obj
+                except Exception:
+                    data = None
+
+        if data is None:
+            messagebox.showwarning("History",
+                                   "Données du scan introuvables sur le disque ou dans la base de données.\n"
+                                   f"Chemin attendu : {json_path}")
             return
 
         # Injecter les données dans le contexte partagé de l'app

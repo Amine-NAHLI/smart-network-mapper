@@ -588,6 +588,16 @@ class NewScanPage(ctk.CTkFrame):
             ],
         }
 
+        # Sauvegarde horodatée unique pour l'historique permanent
+        safe_ip = ip.replace(":", "_").replace("/", "_")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        history_dir = os.path.join(outputs_dir, "scans")
+        os.makedirs(history_dir, exist_ok=True)
+        unique_json_path = os.path.join(history_dir, f"scan_{safe_ip}_{ts}.json")
+        with open(unique_json_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        # Maintenir scan_result.json pour compatibilité directe
         json_path = os.path.join(outputs_dir, "scan_result.json")
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -599,4 +609,4 @@ class NewScanPage(ctk.CTkFrame):
         except Exception:
             pass
 
-        return json_path
+        return unique_json_path
