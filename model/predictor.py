@@ -232,9 +232,52 @@ def get_live_lifecycle_support(software_name: str) -> list:
     return []
 
 
+_OSV_CACHE = {}
+
+def query_google_osv(software_name: str, version_string: str) -> list:
+    """
+    Interroge l'API publique ouverte Google OSV (api.osv.dev - sans clé requise)
+    pour vérifier si une version précise est affectée par des vulnérabilités connues.
+    """
+    if not software_name or not version_string:
+        return []
+
+    cache_key = f"{software_name.lower()}:{version_string.strip()}"
+    if cache_key in _OSV_CACHE:
+        return _OSV_CACHE[cache_key]
+
+    url = "https://api.osv.dev/v1/query"
+    payload = json.dumps({
+        "package": {"name": software_name.lower().strip()},
+        "version": version_string.strip()
+    }).encode("utf-8")
+
+    ctx = ssl.create_default_context()
+    try:
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "SmartNetworkMapper/1.1 (Security-Auditor)"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=2.0, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            vulns = data.get("vulns", [])
+            vuln_ids = [v.get("id") for v in vulns if v.get("id")]
+            _OSV_CACHE[cache_key] = vuln_ids
+            return vuln_ids
+    except Exception:
+        pass
+
+    _OSV_CACHE[cache_key] = []
+    return []
+
+
 def _is_known_safe(detected_soft: str, service_lower: str, ma: int, mi: int, p: int) -> bool:
     """
-    Vérifie si une version est stable et supportée (Heuristique locale + Live API).
+    Vérifie si une version est stable et supportée (Heuristique locale + Live EOL API).
     """
     search_area = f"{detected_soft} {service_lower}".lower()
     
@@ -258,13 +301,27 @@ def _is_known_safe(detected_soft: str, service_lower: str, ma: int, mi: int, p: 
 
     return False
 
-def _is_known_vulnerable(detected_soft: str, service_lower: str, ma: int, mi: int, p: int) -> bool:
-    """Vérifie si une version est connue comme obsolète/vulnérable."""
+def _is_known_vulnerable(detected_soft: str, service_lower: str, ma: int, mi: int, p: int, raw_version: str = "") -> bool:
+    """
+    Vérifie si une version est vulnérable (Heuristique locale + Google OSV Live API).
+    """
     search_area = f"{detected_soft} {service_lower}".lower()
+    
+    # 1. Vérification locale des versions obsolètes critiques
     for key, vuln_ver in _VULNERABLE_VERSIONS.items():
         if key in search_area:
             if (ma, mi, p) < vuln_ver:
                 return True
+
+    # 2. Vérification dynamique via l'API Google OSV
+    if detected_soft and raw_version:
+        try:
+            osv_vulns = query_google_osv(detected_soft, raw_version)
+            if osv_vulns and len(osv_vulns) > 0:
+                return True
+        except Exception:
+            pass
+
     return False
 
 
@@ -328,7 +385,7 @@ def predict(port: int, version_string: str, service: str = "", protocol: str = "
     detected_soft = version_string.split('/')[0].lower() if '/' in version_string else version_string.lower()
     
     is_safe = _is_known_safe(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"])
-    is_vuln = _is_known_vulnerable(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"])
+    is_vuln = _is_known_vulnerable(detected_soft, service_lower, v_info["version_ma"], v_info["version_mi"], v_info["version_p"], raw_version=version_string)
     is_tool = any(tool in detected_soft for tool in _SAFE_TOOLS)
 
     if is_safe:
