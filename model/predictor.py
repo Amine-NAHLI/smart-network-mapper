@@ -131,14 +131,13 @@ def _parse_version(version_string: str) -> dict:
 
 
 
-# Base de connaissances des versions stables (minimales recommandées)
+# Base de connaissances des versions stables (minimales recommandées en cache local)
 # Pour éviter que l'IA ne flagge des versions récentes comme vulnérables.
 _STABLE_VERSIONS = {
     "apache":   (2, 4, 58),
     "nginx":    (1, 24, 0),
     "openssh":  (8, 0, 0),
     "mysql":    (8, 0, 30),
-
     "vsftpd":   (3, 0, 5),
     "php":      (8, 2, 0),
     "postfix":  (3, 7, 0),
@@ -184,15 +183,79 @@ _VULNERABLE_VERSIONS = {
 }
 
 
+# ──────────────────────────────────────────────────────────────
+# Intelligence Dynamique (API endoflife.date & Google OSV)
+# ──────────────────────────────────────────────────────────────
+import urllib.request
+import urllib.error
+import json
+import ssl
+
+_EOL_CACHE = {}
+
+def get_live_lifecycle_support(software_name: str) -> list:
+    """
+    Interroge l'API publique ouverte endoflife.date (sans clé requise)
+    pour récupérer en temps réel le cycle de vie officiel d'un logiciel.
+    """
+    if not software_name:
+        return []
+        
+    soft_key = software_name.lower().strip()
+    # Normalisations de noms d'éditeurs courants
+    alias_map = {
+        "apache2": "apache",
+        "httpd": "apache",
+        "openssh-server": "openssh",
+        "mariadb": "mariadb",
+        "postgresql": "postgresql",
+    }
+    soft_key = alias_map.get(soft_key, soft_key)
+    
+    if soft_key in _EOL_CACHE:
+        return _EOL_CACHE[soft_key]
+
+    url = f"https://endoflife.date/api/{soft_key}.json"
+    ctx = ssl.create_default_context()
+    
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "SmartNetworkMapper/1.1 (Security-Auditor)"})
+        with urllib.request.urlopen(req, timeout=2.0, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if isinstance(data, list) and len(data) > 0:
+                _EOL_CACHE[soft_key] = data
+                return data
+    except Exception:
+        pass
+        
+    _EOL_CACHE[soft_key] = []
+    return []
 
 
 def _is_known_safe(detected_soft: str, service_lower: str, ma: int, mi: int, p: int) -> bool:
-    """Vérifie si une version est connue comme stable/sûre."""
+    """
+    Vérifie si une version est stable et supportée (Heuristique locale + Live API).
+    """
     search_area = f"{detected_soft} {service_lower}".lower()
+    
+    # 1. Vérification dans la base de référence locale (ultra-rapide hors-ligne)
     for key, stable_ver in _STABLE_VERSIONS.items():
         if key in search_area:
             if (ma, mi, p) >= stable_ver:
                 return True
+                
+    # 2. Vérification dynamique via API endoflife.date si connecté
+    if detected_soft and (ma > 0):
+        try:
+            cycles = get_live_lifecycle_support(detected_soft)
+            for cycle in cycles:
+                cycle_str = str(cycle.get("cycle", ""))
+                # Si le cycle correspond à la version majeure/mineure et n'est pas EOL
+                if cycle_str.startswith(str(ma)) and not cycle.get("eol", True):
+                    return True
+        except Exception:
+            pass
+
     return False
 
 def _is_known_vulnerable(detected_soft: str, service_lower: str, ma: int, mi: int, p: int) -> bool:
