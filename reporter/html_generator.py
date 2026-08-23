@@ -4,46 +4,15 @@ import html
 import re
 from datetime import datetime
 
+import markdown
+
 def markdown_to_html(md_text):
     if not md_text:
         return "<p><i>Aucune analyse IA disponible.</i></p>"
     
-    html_out = html.escape(md_text)
-    
-    html_out = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', html_out, flags=re.MULTILINE)
-    html_out = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', html_out, flags=re.MULTILINE)
-    html_out = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', html_out, flags=re.MULTILINE)
-    
-    html_out = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_out)
-    html_out = re.sub(r'\*(.*?)\*', r'<i>\1</i>', html_out)
-    
-    html_out = re.sub(r'`(.*?)`', r'<code style="background: rgba(0,242,255,0.1); padding: 2px 5px; border-radius: 4px; color: var(--cyan); font-family: monospace;">\1</code>', html_out)
-    
-    html_out = re.sub(r'^\s*-\s+(.*?)$', r'<li>\1</li>', html_out, flags=re.MULTILINE)
-    
-    lines = html_out.split('\n')
-    parsed_lines = []
-    in_list = False
-    
-    for line in lines:
-        if line.startswith('<li>'):
-            if not in_list:
-                parsed_lines.append('<ul>')
-                in_list = True
-            parsed_lines.append(line)
-        else:
-            if in_list:
-                parsed_lines.append('</ul>')
-                in_list = False
-            if line.strip() and not line.startswith('<h') and not line.startswith('<ul>') and not line.startswith('<li'):
-                parsed_lines.append(f"<p>{line}</p>")
-            else:
-                parsed_lines.append(line)
-                
-    if in_list:
-        parsed_lines.append('</ul>')
-        
-    return '\n'.join(parsed_lines)
+    # Rendu propre du markdown (supporte tableaux, listes, code...)
+    html_out = markdown.markdown(md_text, extensions=['tables', 'fenced_code'])
+    return html_out
 
 
 def generate_html_report(scan_data, output_path="outputs/report.html"):
@@ -284,6 +253,14 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
             .ai-content p {{ margin-bottom: 12px; }}
             .ai-content ul {{ padding-left: 20px; margin-bottom: 15px; }}
             .ai-content li {{ margin-bottom: 6px; }}
+            .ai-content table {{ margin-bottom: 20px; margin-top: 10px; }}
+            .ai-content blockquote {{ 
+                border-left: 4px solid var(--purple);
+                margin: 15px 0;
+                padding: 10px 15px;
+                background: rgba(157, 78, 221, 0.1);
+                border-radius: 0 4px 4px 0;
+            }}
             
             .target-ip {{
                 font-family: 'JetBrains Mono', monospace;
