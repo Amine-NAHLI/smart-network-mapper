@@ -299,7 +299,11 @@ def handle_scan(target_ip, mode):
     data["ai_report_text"] = ai_report_text
 
     # Génération du rapport HTML visuel en SECOND
-    html_path = os.path.join(outputs_dir, "report.html")
+    safe_target_html = target_clean.replace(":", "_").replace("/", "_")
+    date_jour_short = datetime.now().strftime("%Y-%m-%d")
+    report_filename = f"{safe_target_html}_{date_jour_short}.html"
+    
+    html_path = os.path.join(outputs_dir, report_filename)
     html_generated = False
     
     try:
@@ -309,7 +313,7 @@ def handle_scan(target_ip, mode):
         # Copie dans le dossier autorisé par n8n (.n8n-files)
         import shutil
         os.makedirs(n8n_dir, exist_ok=True)
-        n8n_html_path = os.path.join(n8n_dir, "report.html")
+        n8n_html_path = os.path.join(n8n_dir, report_filename)
         shutil.copy(html_path, n8n_html_path)
         
         html_path = n8n_html_path

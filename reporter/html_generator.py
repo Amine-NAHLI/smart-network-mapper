@@ -8,25 +8,19 @@ def markdown_to_html(md_text):
     if not md_text:
         return "<p><i>Aucune analyse IA disponible.</i></p>"
     
-    # Échapper le HTML pour éviter les injections XSS
     html_out = html.escape(md_text)
     
-    # Headers
     html_out = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', html_out, flags=re.MULTILINE)
     html_out = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', html_out, flags=re.MULTILINE)
     html_out = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', html_out, flags=re.MULTILINE)
     
-    # Gras et Italique
     html_out = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_out)
     html_out = re.sub(r'\*(.*?)\*', r'<i>\1</i>', html_out)
     
-    # Inline code
     html_out = re.sub(r'`(.*?)`', r'<code style="background: rgba(0,242,255,0.1); padding: 2px 5px; border-radius: 4px; color: var(--cyan); font-family: monospace;">\1</code>', html_out)
     
-    # Listes
     html_out = re.sub(r'^\s*-\s+(.*?)$', r'<li>\1</li>', html_out, flags=re.MULTILINE)
     
-    # Paragraphes (lignes simples)
     lines = html_out.split('\n')
     parsed_lines = []
     in_list = False
@@ -53,33 +47,90 @@ def markdown_to_html(md_text):
 
 
 def generate_html_report(scan_data, output_path="outputs/report.html"):
-    """
-    Génère un rapport HTML Cyberpunk Premium avec toutes les données (OSINT, IA, HTTP, OS).
-    """
     target = scan_data.get("cible", "Inconnue")
     date = scan_data.get("date", "Inconnue")
     source = scan_data.get("source", "Inconnue")
     ports = scan_data.get("ports", [])
     
-    # Nouvelles données (OS, Domain, HTTP)
     device_info = scan_data.get("device_info", {})
     domain_info = scan_data.get("domain_info", {})
     ai_text = scan_data.get("ai_report_text", "")
     
-    os_name = device_info.get("os_family", "Inconnu") if device_info else "Inconnu"
+    os_name = device_info.get("os", "Inconnu") if device_info else "Inconnu"
     org = domain_info.get("whois_rdap", {}).get("organization", "N/A") if domain_info else "N/A"
     country = domain_info.get("whois_rdap", {}).get("country", "N/A") if domain_info else "N/A"
     cf_detected = domain_info.get("security_headers", {}).get("cloudflare_detected", False) if domain_info else False
     waf_detected = domain_info.get("security_headers", {}).get("waf_detected", False) if domain_info else False
     
-    # OS Icon Logic
-    os_icon = "💻"
-    if "win" in os_name.lower(): os_icon = "🪟"
-    elif "linux" in os_name.lower(): os_icon = "🐧"
-    elif "mac" in os_name.lower() or "apple" in os_name.lower(): os_icon = "🍎"
-    elif "freebsd" in os_name.lower(): os_icon = "😈"
+    # OS Icon Logic with FontAwesome
+    os_icon = '<i class="fa-solid fa-server"></i>'
+    if "win" in os_name.lower(): os_icon = '<i class="fa-brands fa-windows"></i>'
+    elif "linux" in os_name.lower(): os_icon = '<i class="fa-brands fa-linux"></i>'
+    elif "mac" in os_name.lower() or "apple" in os_name.lower(): os_icon = '<i class="fa-brands fa-apple"></i>'
+    elif "freebsd" in os_name.lower(): os_icon = '<i class="fa-brands fa-freebsd"></i>'
 
-    # Statistiques
+    info_cards_html = ""
+    
+    if os_name and os_name.lower() not in ["inconnu", "n/a", "none"]:
+        info_cards_html += f'''
+        <div class="stat-card">
+            <div class="stat-icon">{os_icon}</div>
+            <span class="stat-val" style="font-size: 18px;">{os_name}</span>
+            <span class="stat-label">Système d'exploitation</span>
+        </div>
+        '''
+        
+    if country and country.lower() not in ["inconnu", "n/a", "none"]:
+        info_cards_html += f'''
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+            <span class="stat-val" style="font-size: 18px;">{country}</span>
+            <span class="stat-label">Localisation</span>
+        </div>
+        '''
+        
+    if org and org.lower() not in ["inconnu", "n/a", "none", "non identifiée"]:
+        info_cards_html += f'''
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-building"></i></div>
+            <span class="stat-val" style="font-size: 16px;">{org}</span>
+            <span class="stat-label">Organisation / FAI</span>
+        </div>
+        '''
+        
+    if cf_detected or waf_detected:
+        info_cards_html += '''
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-cloud-bolt"></i></div>
+            <span class="stat-val" style="font-size: 16px; color: var(--orange);">
+                WAF / Proxy Détecté
+            </span>
+            <span class="stat-label">Périmètre de Protection</span>
+        </div>
+        '''
+    else:
+        sec_err = domain_info.get("security_headers", {}).get("error") if domain_info else "Error"
+        if not sec_err and domain_info:
+            info_cards_html += '''
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fa-solid fa-cloud-bolt"></i></div>
+                <span class="stat-val" style="font-size: 16px; color: var(--green);">
+                    Connexion Directe
+                </span>
+                <span class="stat-label">Périmètre de Protection</span>
+            </div>
+            '''
+            
+    # Si aucune info n'est dispo, on affiche juste l'hôte
+    if not info_cards_html:
+        info_cards_html = f'''
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-network-wired"></i></div>
+            <span class="stat-val" style="font-size: 18px;">{target}</span>
+            <span class="stat-label">Hôte Analysé</span>
+        </div>
+        '''
+
     total = scan_data.get("total_scanned", len(ports))
     open_p = len([p for p in ports if p.get("statut") == "ouvert"])
     vuln_p = len([p for p in ports if p.get("vulnerable") == 1])
@@ -88,7 +139,6 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     safe_percent = int((safe_p / open_p) * 100) if open_p > 0 else 100
     vuln_percent = int((vuln_p / open_p) * 100) if open_p > 0 else 0
     
-    # Rendu HTML IA
     html_ai = markdown_to_html(ai_text)
     
     html_template = f"""
@@ -96,190 +146,229 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>SNM - Security Dashboard</title>
+        <title>SNM - Executive Dashboard</title>
+        
+        <!-- Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+        
+        <!-- FontAwesome Icons -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-            
             :root {{
-                --bg: #05070A;
-                --card-bg: rgba(17, 24, 33, 0.7);
-                --cyan: #00f2ff;
-                --red: #ff004c;
-                --green: #00ff95;
-                --purple: #b052ff;
-                --orange: #ff8c00;
-                --gray: #8892b0;
-                --text: #e6edf3;
-                --glass-border: rgba(255, 255, 255, 0.05);
+                --bg: #0b0f19;
+                --card-bg: #151b2b;
+                --cyan: #00e5ff;
+                --red: #ff2a55;
+                --green: #00d27a;
+                --purple: #9d4edd;
+                --orange: #ff9100;
+                --gray: #94a3b8;
+                --text: #f1f5f9;
+                --border: #1e293b;
             }}
             body {{
                 background-color: var(--bg);
-                background-image: 
-                    radial-gradient(circle at 15% 50%, rgba(0, 242, 255, 0.03) 0%, transparent 50%),
-                    radial-gradient(circle at 85% 30%, rgba(255, 0, 76, 0.03) 0%, transparent 50%);
                 color: var(--text);
                 font-family: 'Inter', sans-serif;
                 margin: 0;
                 padding: 40px;
                 line-height: 1.6;
             }}
-            .container {{ max-width: 1200px; margin: auto; }}
+            .container {{ max-width: 1300px; margin: auto; }}
             
-            /* Glassmorphism Cards */
-            .glass-panel {{
+            /* Professional Panel */
+            .panel {{
                 background: var(--card-bg);
-                backdrop-filter: blur(12px);
-                border: 1px solid var(--glass-border);
-                border-radius: 12px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
                 padding: 24px;
                 margin-bottom: 30px;
-                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
             }}
             
             header {{
                 display: flex;
                 justify-content: space-between;
-                align-items: flex-end;
-                border-bottom: 2px solid var(--cyan);
+                align-items: center;
+                border-bottom: 1px solid var(--border);
                 padding-bottom: 20px;
-                margin-bottom: 40px;
+                margin-bottom: 30px;
             }}
-            h1, h2, h3 {{ font-family: 'JetBrains Mono', monospace; margin-top: 0; }}
-            h1 {{ color: var(--cyan); letter-spacing: 2px; font-size: 28px; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }}
-            h2 {{ color: var(--purple); font-size: 20px; border-bottom: 1px solid rgba(176, 82, 255, 0.3); padding-bottom: 10px; }}
+            h1, h2, h3 {{ font-family: 'Inter', sans-serif; margin-top: 0; font-weight: 600; }}
+            h1 {{ color: #ffffff; font-size: 24px; display: flex; align-items: center; gap: 12px; }}
+            h2 {{ color: #ffffff; font-size: 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }}
             
             .stats-grid {{
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
                 gap: 20px;
             }}
             .stat-card {{
-                background: rgba(0, 0, 0, 0.4);
-                border: 1px solid var(--glass-border);
+                background: #0f141f;
+                border: 1px solid var(--border);
                 padding: 20px;
-                border-radius: 8px;
-                text-align: center;
-                transition: transform 0.2s ease, border-color 0.2s ease;
+                border-radius: 6px;
+                display: flex;
+                flex-direction: column;
+                position: relative;
+                overflow: hidden;
             }}
-            .stat-card:hover {{ transform: translateY(-5px); border-color: var(--cyan); }}
-            .stat-val {{ font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; display: block; margin-bottom: 5px; }}
-            .stat-label {{ color: var(--gray); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }}
+            .stat-card::before {{
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0; height: 2px;
+                background: var(--gray);
+                opacity: 0.2;
+            }}
+            .stat-card.brand-cyan::before {{ background: var(--cyan); opacity: 1; }}
+            .stat-card.brand-red::before {{ background: var(--red); opacity: 1; }}
+            .stat-card.brand-green::before {{ background: var(--green); opacity: 1; }}
+            .stat-card.brand-orange::before {{ background: var(--orange); opacity: 1; }}
+            
+            .stat-icon {{ font-size: 20px; color: var(--gray); margin-bottom: 15px; }}
+            .stat-val {{ font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #fff; line-height: 1.2; }}
+            .stat-label {{ color: var(--gray); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px; }}
+            
+            /* Two columns layout */
+            .row {{
+                display: flex;
+                gap: 30px;
+                margin-bottom: 30px;
+            }}
+            .col-70 {{ flex: 0 0 calc(70% - 15px); }}
+            .col-30 {{ flex: 0 0 calc(30% - 15px); }}
             
             /* Table Styling */
-            table {{
-                width: 100%;
-                border-collapse: separate;
-                border-spacing: 0;
-            }}
+            table {{ width: 100%; border-collapse: collapse; }}
             th {{ 
-                background: rgba(0, 0, 0, 0.5); 
+                background: #0f141f; 
                 color: var(--gray); 
                 text-align: left; 
-                padding: 15px; 
-                font-size: 12px; 
+                padding: 12px 15px; 
+                font-size: 11px; 
+                font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 1px;
+                border-bottom: 1px solid var(--border);
             }}
-            td {{ padding: 15px; border-bottom: 1px solid var(--glass-border); font-size: 14px; }}
-            tr:hover td {{ background: rgba(255, 255, 255, 0.02); }}
-            
-            .vuln-row {{ background: rgba(255, 0, 76, 0.05); border-left: 3px solid var(--red); }}
+            td {{ padding: 15px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }}
+            tr:last-child td {{ border-bottom: none; }}
+            tr:hover td {{ background: rgba(255, 255, 255, 0.01); }}
             
             .badge {{
-                padding: 4px 10px;
+                padding: 4px 8px;
                 border-radius: 4px;
-                font-size: 11px;
+                font-size: 10px;
                 font-weight: 700;
                 font-family: 'JetBrains Mono', monospace;
                 text-transform: uppercase;
-                display: inline-block;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
             }}
-            .badge-red {{ background: rgba(255, 0, 76, 0.2); color: var(--red); border: 1px solid var(--red); }}
-            .badge-orange {{ background: rgba(255, 140, 0, 0.2); color: var(--orange); border: 1px solid var(--orange); }}
-            .badge-green {{ background: rgba(0, 255, 149, 0.2); color: var(--green); border: 1px solid var(--green); }}
-            .badge-cyan {{ background: rgba(0, 242, 255, 0.2); color: var(--cyan); border: 1px solid var(--cyan); }}
-            .badge-purple {{ background: rgba(176, 82, 255, 0.2); color: var(--purple); border: 1px solid var(--purple); }}
+            .badge-red {{ background: rgba(255, 42, 85, 0.15); color: var(--red); border: 1px solid rgba(255, 42, 85, 0.3); }}
+            .badge-orange {{ background: rgba(255, 145, 0, 0.15); color: var(--orange); border: 1px solid rgba(255, 145, 0, 0.3); }}
+            .badge-green {{ background: rgba(0, 210, 122, 0.15); color: var(--green); border: 1px solid rgba(0, 210, 122, 0.3); }}
+            .badge-cyan {{ background: rgba(0, 229, 255, 0.15); color: var(--cyan); border: 1px solid rgba(0, 229, 255, 0.3); }}
+            .badge-purple {{ background: rgba(157, 78, 221, 0.15); color: var(--purple); border: 1px solid rgba(157, 78, 221, 0.3); }}
             
-            .ai-content {{
-                color: #c9d1d9;
-                font-size: 15px;
+            .ai-content {{ color: #cbd5e1; font-size: 14px; line-height: 1.7; }}
+            .ai-content h2 {{ color: var(--cyan); margin-top: 25px; font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }}
+            .ai-content h3 {{ color: var(--text); font-size: 15px; font-weight: 600; margin-top: 20px; }}
+            .ai-content p {{ margin-bottom: 12px; }}
+            .ai-content ul {{ padding-left: 20px; margin-bottom: 15px; }}
+            .ai-content li {{ margin-bottom: 6px; }}
+            
+            .target-ip {{
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 20px;
+                font-weight: 700;
+                color: var(--cyan);
             }}
-            .ai-content h2 {{ color: var(--cyan); margin-top: 30px; font-size: 18px; }}
-            .ai-content h3 {{ color: var(--orange); font-size: 16px; }}
-            .ai-content p {{ margin-bottom: 15px; }}
-            .ai-content ul {{ padding-left: 20px; }}
-            .ai-content li {{ margin-bottom: 8px; }}
         </style>
     </head>
     <body>
         <div class="container">
             <header>
                 <div>
-                    <h1>SMART NETWORK MAPPER</h1>
-                    <p style="color: var(--gray); font-family: 'JetBrains Mono', monospace; margin:0;">Advanced Threat Intelligence Dashboard</p>
+                    <h1><i class="fa-solid fa-shield-halved" style="color: var(--cyan);"></i> Smart Network Mapper</h1>
+                    <p style="color: var(--gray); font-size: 13px; margin: 5px 0 0 35px;">Executive Security Report</p>
                 </div>
-                <div style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 13px;">
-                    <div style="color: var(--cyan); font-size: 18px; font-weight:bold; margin-bottom: 5px;">{target}</div>
-                    <div style="color: var(--gray)">{date} • Source: {source}</div>
+                <div style="text-align: right;">
+                    <div class="target-ip">{target}</div>
+                    <div style="color: var(--gray); font-size: 12px; font-family: 'JetBrains Mono', monospace; margin-top: 4px;">
+                        <i class="fa-regular fa-clock"></i> {date} &nbsp; | &nbsp; <i class="fa-solid fa-robot"></i> Source: {source}
+                    </div>
                 </div>
             </header>
 
-            <!-- Profil OSINT de la cible -->
-            <div class="stats-grid" style="margin-bottom: 30px;">
-                <div class="stat-card">
-                    <span class="stat-val" style="color: var(--text)">{os_icon}</span>
-                    <span class="stat-label">OS Detecté</span>
-                    <div style="color: var(--cyan); font-weight:bold; font-size:14px; margin-top:5px;">{os_name}</div>
+            <div class="row">
+                <!-- Gauche : Target OSINT -->
+                <div class="col-70">
+                    <div class="panel" style="height: 100%; box-sizing: border-box;">
+                        <h2><i class="fa-solid fa-crosshairs" style="color: var(--cyan);"></i> Informations sur la Cible</h2>
+                        <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                            {info_cards_html}
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-val" style="color: var(--text)">🌍</span>
-                    <span class="stat-label">Localisation</span>
-                    <div style="color: var(--cyan); font-weight:bold; font-size:14px; margin-top:5px;">{country}</div>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-val" style="color: var(--text)">🏢</span>
-                    <span class="stat-label">Organisation / FAI</span>
-                    <div style="color: var(--cyan); font-weight:bold; font-size:14px; margin-top:5px;">{org}</div>
-                </div>
-                <div class="stat-card" style="border-color: {'var(--orange)' if cf_detected else 'var(--glass-border)'}">
-                    <span class="stat-val" style="color: var(--text)">☁️</span>
-                    <span class="stat-label">Protection Web</span>
-                    <div style="color: {'var(--orange)' if cf_detected else 'var(--green)'}; font-weight:bold; font-size:14px; margin-top:5px;">
-                        {'Cloudflare/WAF Actif' if cf_detected or waf_detected else 'Direct / Pas de WAF'}
+                
+                <!-- Droite : Graphe Récapitulatif -->
+                <div class="col-30">
+                    <div class="panel" style="height: 100%; box-sizing: border-box; display: flex; flex-direction: column;">
+                        <h2><i class="fa-solid fa-chart-pie" style="color: var(--purple);"></i> Bilan de Sécurité</h2>
+                        <div style="position: relative; height: 220px; width: 100%;">
+                            <canvas id="securityChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Stats Ports -->
-            <div class="glass-panel">
-                <h2 style="color: var(--cyan);">📊 STATISTIQUES DE SCAN</h2>
-                <div class="stats-grid">
-                    <div class="stat-card"><span class="stat-val">{total}</span><span class="stat-label">Ports Scannés</span></div>
-                    <div class="stat-card"><span class="stat-val" style="color: var(--cyan)">{open_p}</span><span class="stat-label">Ouverts</span></div>
-                    <div class="stat-card"><span class="stat-val" style="color: var(--red)">{vuln_p}</span><span class="stat-label">Vulnérables (IA)</span></div>
-                    <div class="stat-card"><span class="stat-val" style="color: var(--green)">{safe_p}</span><span class="stat-label">Sécurisés</span></div>
+            <div class="stats-grid" style="margin-bottom: 30px;">
+                <div class="stat-card brand-cyan">
+                    <span class="stat-val">{total}</span>
+                    <span class="stat-label">Ports Scannés</span>
+                </div>
+                <div class="stat-card brand-cyan">
+                    <span class="stat-val">{open_p}</span>
+                    <span class="stat-label">Ports Ouverts</span>
+                </div>
+                <div class="stat-card brand-red">
+                    <span class="stat-val">{vuln_p}</span>
+                    <span class="stat-label">Services Vulnérables</span>
+                </div>
+                <div class="stat-card brand-green">
+                    <span class="stat-val">{safe_p}</span>
+                    <span class="stat-label">Services Sécurisés</span>
                 </div>
             </div>
 
             <!-- AI AUDIT -->
-            <div class="glass-panel" style="border-left: 4px solid var(--purple);">
-                <h2 style="color: var(--purple);">🤖 AUDIT EXPERT IA (Llama-3.3-70b)</h2>
+            <div class="panel" style="border-top: 3px solid var(--purple);">
+                <h2><i class="fa-solid fa-brain" style="color: var(--purple);"></i> Audit Expert IA (GPT-OSS-120b)</h2>
                 <div class="ai-content">
                     {html_ai}
                 </div>
             </div>
 
             <!-- PORTS DÉTAILLÉS -->
-            <div class="glass-panel">
-                <h2 style="color: var(--cyan);">🔌 SERVICES & PORTS DÉTECTÉS</h2>
+            <div class="panel">
+                <h2><i class="fa-solid fa-network-wired" style="color: var(--cyan);"></i> Cartographie des Services</h2>
                 <table>
                     <thead>
                         <tr>
-                            <th>PORT</th>
-                            <th>SERVICE / MITRE</th>
-                            <th>VERSION</th>
-                            <th>STATUS</th>
-                            <th>AI PREDICTION</th>
+                            <th style="width: 15%">PORT</th>
+                            <th style="width: 25%">SERVICE / DÉTECTION</th>
+                            <th style="width: 25%">VERSION DÉTECTÉE</th>
+                            <th style="width: 15%">STATUT</th>
+                            <th style="width: 20%">PRÉDICTION ML</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -287,7 +376,6 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     
     for p in ports:
         is_vuln = p.get("vulnerable") == 1
-        row_class = "vuln-row" if is_vuln else ""
         label = html.escape(str(p.get("label", "Unknown")))
         
         raw_conf = p.get("confidence", 0)
@@ -300,33 +388,41 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         proto = html.escape(str(p.get('protocole', 'TCP')))
         
         ia_badge_class = "badge-red" if is_vuln else "badge-green"
+        ia_icon = "fa-bug" if is_vuln else "fa-check"
 
         # MITRE
         try:
             from reporter.skills_knowledge import get_mitre_info
             mitre_data = get_mitre_info(p.get("port", 0), p.get("service", ""))
-            mitre_badge = f'<br><span class="badge badge-purple" style="margin-top: 5px; font-size: 9px;">🎯 {mitre_data["technique_id"]}</span>'
+            mitre_badge = f'<div style="margin-top: 6px;"><span class="badge badge-purple"><i class="fa-solid fa-crosshairs"></i> {mitre_data["technique_id"]}</span></div>'
         except Exception:
             mitre_badge = ""
             
-        # HTTP SECURITY HEADERS (si c'est un port web)
+        # HTTP SECURITY HEADERS
         http_badge = ""
         if str(port_num) in ["80", "443", "8080", "8443"] and domain_info:
             sec_headers = domain_info.get("security_headers", {}).get("missing_security_headers", [])
             if sec_headers:
-                http_badge = f'<br><span class="badge badge-orange" style="margin-top: 5px; font-size: 9px;">⚠️ {len(sec_headers)} EN-TÊTES MANQUANTS</span>'
+                http_badge = f'<div style="margin-top: 6px;"><span class="badge badge-orange"><i class="fa-solid fa-triangle-exclamation"></i> {len(sec_headers)} Headers Manquants</span></div>'
             else:
-                http_badge = f'<br><span class="badge badge-green" style="margin-top: 5px; font-size: 9px;">🔒 EN-TÊTES SÉCURISÉS</span>'
+                http_badge = f'<div style="margin-top: 6px;"><span class="badge badge-green"><i class="fa-solid fa-lock"></i> Headers Sécurisés</span></div>'
         
         html_template += f"""
-                        <tr class="{row_class}">
-                            <td><b style="color: var(--cyan); font-family: 'JetBrains Mono'; font-size: 16px;">{port_num}</b><span style="color:var(--gray);font-size:12px;">/{proto}</span></td>
-                            <td><span style="font-weight: 600;">{service_esc}</span>{mitre_badge}{http_badge}</td>
+                        <tr>
+                            <td>
+                                <span style="color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700;">{port_num}</span>
+                                <span style="color: var(--gray); font-size: 11px;">/{proto}</span>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600; color: #fff;">{service_esc}</div>
+                                {mitre_badge}
+                                {http_badge}
+                            </td>
                             <td style="color: var(--gray);">{version_esc}</td>
                             <td><span style="color: var(--gray); text-transform: capitalize;">{statut}</span></td>
                             <td>
-                                <span class="badge {ia_badge_class}">{label}</span>
-                                <div style="color: var(--gray); font-size: 11px; margin-top: 5px; font-family: monospace;">Confiance: {conf}%</div>
+                                <span class="badge {ia_badge_class}"><i class="fa-solid {ia_icon}"></i> {label}</span>
+                                <div style="color: var(--gray); font-size: 10px; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">Confiance: {conf}%</div>
                             </td>
                         </tr>
         """
@@ -357,45 +453,45 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         cisa_alert_html = ""
         if cisa_kev_count > 0:
             cisa_alert_html = f"""
-            <div style="background: rgba(255, 0, 76, 0.1); border-left: 4px solid var(--red); padding: 20px; border-radius: 4px; margin-bottom: 24px;">
-                <b style="color: var(--red); font-size: 16px; display:flex; align-items:center; gap:10px;">
-                    <span style="font-size: 24px;">🚨</span> ALERTE DE THREAT INTELLIGENCE (CISA KEV)
+            <div style="background: rgba(255, 42, 85, 0.1); border-left: 4px solid var(--red); padding: 20px; border-radius: 4px; margin-bottom: 24px;">
+                <b style="color: var(--red); font-size: 15px; display:flex; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 20px;"></i> ALERTE DE THREAT INTELLIGENCE (CISA KEV)
                 </b>
-                <p style="color: #ffb3c6; font-size: 14px; margin: 10px 0 0 0;">
+                <p style="color: #ffb3c6; font-size: 13px; margin: 8px 0 0 0;">
                     {cisa_kev_count} vulnérabilité(s) activement exploitée(s) dans la nature détectée(s). Un correctif d'urgence est prioritaire.
                 </p>
             </div>
             """
 
         html_template += f"""
-            <div class="glass-panel">
-                <h2 style="color: var(--orange);">🔥 VULNÉRABILITÉS & CISA KEV</h2>
+            <div class="panel">
+                <h2><i class="fa-solid fa-bug" style="color: var(--red);"></i> Registre des Vulnérabilités (CVE)</h2>
                 
                 {cisa_alert_html}
 
                 <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 30px;">
-                    <div class="stat-card">
+                    <div class="stat-card brand-orange">
                         <span class="stat-val">{total_cves}</span>
-                        <span class="stat-label">CVEs Trouvées</span>
+                        <span class="stat-label">CVEs Identifiées</span>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-val" style="color: var(--red)">{critical_cves}</span>
+                    <div class="stat-card brand-red">
+                        <span class="stat-val">{critical_cves}</span>
                         <span class="stat-label">Critiques (CVSS ≥ 9)</span>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-val" style="color: var(--red)">{cisa_kev_count}</span>
-                        <span class="stat-label">Exploits Actifs (CISA KEV)</span>
+                    <div class="stat-card brand-red">
+                        <span class="stat-val">{cisa_kev_count}</span>
+                        <span class="stat-label">Exploits Actifs (KEV)</span>
                     </div>
                 </div>
 
                 <table>
                     <thead>
                         <tr>
-                            <th>PORT</th>
-                            <th>CVE ID</th>
-                            <th>CVSS</th>
-                            <th>SÉVÉRITÉ</th>
-                            <th>DESCRIPTION</th>
+                            <th style="width: 10%">PORT</th>
+                            <th style="width: 15%">CVE ID</th>
+                            <th style="width: 10%">CVSS</th>
+                            <th style="width: 10%">SÉVÉRITÉ</th>
+                            <th style="width: 55%">DESCRIPTION TECHNIQUE</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -407,7 +503,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
             severity = html.escape(str(cve.get("severity", "NONE")))
             is_kev = cve.get("is_cisa_kev", False)
             
-            if len(desc) > 120: desc = desc[:117] + "..."
+            if len(desc) > 150: desc = desc[:147] + "..."
                 
             badge_class = "badge-green"
             if cvss >= 9.0: badge_class = "badge-red"
@@ -417,18 +513,21 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
             port_esc = html.escape(str(cve.get('_port')))
             service_esc = html.escape(str(cve.get('_service')))
             
-            kev_badge = ' <span class="badge badge-red" style="margin-left: 10px;">🔥 KEV</span>' if is_kev else ''
+            kev_badge = '<div style="margin-top: 5px;"><span class="badge badge-red"><i class="fa-solid fa-fire"></i> KEV</span></div>' if is_kev else ''
 
             html_template += f"""
                         <tr>
                             <td>
-                                <b style="color: var(--cyan); font-family: monospace;">{port_esc}</b><br>
-                                <span style="color: var(--gray); font-size: 11px;">{service_esc}</span>
+                                <span style="color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-weight: 700;">{port_esc}</span><br>
+                                <span style="color: var(--gray); font-size: 10px; text-transform: uppercase;">{service_esc}</span>
                             </td>
-                            <td><b style="font-family: monospace;">{cve_id}</b>{kev_badge}</td>
-                            <td><b style="color: var(--text); font-family: monospace;">{cvss}</b></td>
+                            <td>
+                                <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #fff;">{cve_id}</span>
+                                {kev_badge}
+                            </td>
+                            <td><span style="color: #fff; font-family: 'JetBrains Mono', monospace; font-weight: 700;">{cvss}</span></td>
                             <td><span class="badge {badge_class}">{severity}</span></td>
-                            <td style="color: var(--gray); font-size: 13px;">{desc}</td>
+                            <td style="color: var(--gray); font-size: 12px; line-height: 1.5;">{desc}</td>
                         </tr>
             """
         html_template += """
@@ -438,19 +537,99 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         """
     else:
         html_template += """
-            <div class="glass-panel" style="text-align: center; border-color: var(--green);">
-                <div style="font-size: 40px; margin-bottom: 10px;">✅</div>
-                <h3 style="color: var(--green); margin:0;">Aucune CVE connue trouvée sur NVD</h3>
-                <p style="color: var(--gray);">Les services détectés ne présentent pas de vulnérabilités référencées.</p>
+            <div class="panel" style="text-align: center; border-top: 3px solid var(--green); padding: 40px 20px;">
+                <i class="fa-solid fa-shield-check" style="font-size: 40px; color: var(--green); margin-bottom: 15px;"></i>
+                <h3 style="color: var(--green); margin:0;">Aucune vulnérabilité CVE détectée</h3>
+                <p style="color: var(--gray); font-size: 14px; margin-top: 10px;">Les services analysés ne présentent aucune vulnérabilité publiquement documentée dans la base NVD.</p>
             </div>
         """
 
-    html_template += """
-            <footer style="margin-top: 50px; text-align: center; color: var(--gray); font-size: 12px; font-family: 'JetBrains Mono', monospace;">
-                © 2026 Smart Network Mapper • PFA IntelTrust<br>
-                <span style="opacity: 0.5;">Propulsé par Python, Llama-3, Random Forest & n8n</span>
+    html_template += f"""
+            <footer style="margin-top: 50px; text-align: center; color: var(--gray); font-size: 12px; font-family: 'JetBrains Mono', monospace; padding-bottom: 20px;">
+                © {datetime.now().year} Smart Network Mapper • Architecture Zero Trust<br>
+                <span style="opacity: 0.5;">Core: Python • ML: Random Forest • Threat Intel: CISA/NVD</span>
             </footer>
         </div>
+        
+        <!-- Script Chart.js -->
+        <script>
+            const ctx = document.getElementById('securityChart').getContext('2d');
+            const data = {{
+                labels: ['Services Sécurisés', 'Services Vulnérables'],
+                datasets: [{{
+                    data: [{safe_p}, {vuln_p}],
+                    backgroundColor: ['#00d27a', '#ff2a55'],
+                    borderColor: ['#0b0f19', '#0b0f19'],
+                    borderWidth: 3,
+                    hoverOffset: 4
+                }}]
+            }};
+            
+            const config = {{
+                type: 'doughnut',
+                data: data,
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {{
+                        legend: {{
+                            position: 'bottom',
+                            labels: {{
+                                color: '#94a3b8',
+                                font: {{ family: 'Inter', size: 12 }},
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }}
+                        }},
+                        tooltip: {{
+                            backgroundColor: 'rgba(21, 27, 43, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#1e293b',
+                            borderWidth: 1,
+                            padding: 12,
+                            boxPadding: 6
+                        }}
+                    }}
+                }}
+            }};
+            
+            // Text in center of doughnut
+            const centerTextPlugin = {{
+                id: 'centerText',
+                beforeDraw: function(chart) {{
+                    var width = chart.width,
+                        height = chart.height,
+                        ctx = chart.ctx;
+            
+                    ctx.restore();
+                    var fontSize = (height / 100).toFixed(2);
+                    ctx.font = "bold " + fontSize + "em 'JetBrains Mono'";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#ffffff";
+            
+                    var text = "{open_p}",
+                        textX = Math.round((width - ctx.measureText(text).width) / 2),
+                        textY = height / 2 - 15;
+            
+                    ctx.fillText(text, textX, textY);
+                    
+                    ctx.font = "500 " + (fontSize/2.5).toFixed(2) + "em 'Inter'";
+                    ctx.fillStyle = "#94a3b8";
+                    var text2 = "PORTS",
+                        text2X = Math.round((width - ctx.measureText(text2).width) / 2),
+                        text2Y = height / 2 + 10;
+                        
+                    ctx.fillText(text2, text2X, text2Y);
+                    ctx.save();
+                }}
+            }};
+
+            new Chart(ctx, config, [centerTextPlugin]);
+            Chart.register(centerTextPlugin);
+        </script>
     </body>
     </html>
     """

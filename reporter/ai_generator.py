@@ -99,7 +99,7 @@ Soyez concis, professionnel et direct. Tenez-vous rigoureusement aux faits obser
     }
     
     payload = {
-        "model": "llama3-70b-8192",
+        "model": "openai/gpt-oss-120b",
         "messages": [
             {
                 "role": "system",
@@ -111,7 +111,7 @@ Soyez concis, professionnel et direct. Tenez-vous rigoureusement aux faits obser
             }
         ],
         "temperature": 0.2,
-        "max_tokens": 4096
+        "max_tokens": 2048
     }
 
     try:
