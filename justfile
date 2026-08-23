@@ -1,7 +1,5 @@
 set export
-# On utilise Bash sur Windows (car vous avez Git Bash installé)
-set windows-shell := ["bash", "-uc"]
-set shell := ["bash", "-uc"]
+set windows-powershell := true
 
 # Commande par défaut (liste les commandes)
 default:
