@@ -320,6 +320,16 @@ def handle_scan(target_ip, mode):
     except Exception as e:
         pass
 
+    # Ajout du lien Google Maps pour Telegram si géolocalisation disponible
+    try:
+        lat = data.get("domain_info", {}).get("geolocation", {}).get("lat", 0.0)
+        lon = data.get("domain_info", {}).get("geolocation", {}).get("lon", 0.0)
+        if lat and lon and lat != 0.0 and lon != 0.0:
+            maps_url = f"https://www.google.com/maps?q={lat},{lon}"
+            ai_report_text += f"\n\n📍 **Localisation GPS** : [Voir sur Google Maps]({maps_url})\n"
+    except Exception:
+        pass
+
     ai_report_chunks = format_telegram_chunks(split_telegram_message(ai_report_text))
 
     final_output = {

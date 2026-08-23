@@ -26,8 +26,30 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     ai_text = scan_data.get("ai_report_text", "")
     
     os_name = device_info.get("os", "Inconnu") if device_info else "Inconnu"
-    org = domain_info.get("whois_rdap", {}).get("organization", "N/A") if domain_info else "N/A"
-    country = domain_info.get("whois_rdap", {}).get("country", "N/A") if domain_info else "N/A"
+    
+    geo_info = domain_info.get("geolocation", {}) if domain_info else {}
+    city = geo_info.get("city", "Inconnu")
+    country = geo_info.get("country", "Inconnu")
+    isp = geo_info.get("isp", "N/A")
+    lat = geo_info.get("lat", 0.0)
+    lon = geo_info.get("lon", 0.0)
+    
+    # Format de la localisation
+    if city not in ["Inconnu", "N/A"] and country not in ["Inconnu", "N/A"]:
+        location_str = f"{city}, {country}"
+        if lat and lon:
+            gps_str = f"<br><span style='font-size: 11px; color: var(--gray); font-family: monospace;'>GPS: {lat}, {lon}</span>"
+        else:
+            gps_str = ""
+    elif country not in ["Inconnu", "N/A"]:
+        location_str = country
+        gps_str = ""
+    else:
+        location_str = "N/A"
+        gps_str = ""
+        
+    org = isp if isp not in ["Inconnu", "N/A"] else (domain_info.get("whois_rdap", {}).get("organization", "N/A") if domain_info else "N/A")
+    
     cf_detected = domain_info.get("security_headers", {}).get("cloudflare_detected", False) if domain_info else False
     waf_detected = domain_info.get("security_headers", {}).get("waf_detected", False) if domain_info else False
     
@@ -49,11 +71,11 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         </div>
         '''
         
-    if country and country.lower() not in ["inconnu", "n/a", "none"]:
+    if location_str and location_str.lower() not in ["inconnu", "n/a", "none"]:
         info_cards_html += f'''
         <div class="stat-card">
             <div class="stat-icon"><i class="fa-solid fa-map-location-dot"></i></div>
-            <span class="stat-val" style="font-size: 18px;">{country}</span>
+            <span class="stat-val" style="font-size: 16px;">{location_str}{gps_str}</span>
             <span class="stat-label">Localisation</span>
         </div>
         '''
@@ -100,13 +122,20 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         </div>
         '''
 
+    # Calculs pour les graphes et stats globaux, on tient compte des CVE
     total = scan_data.get("total_scanned", len(ports))
-    open_p = len([p for p in ports if p.get("statut") == "ouvert"])
-    vuln_p = len([p for p in ports if p.get("vulnerable") == 1])
-    safe_p = open_p - vuln_p
     
-    safe_percent = int((safe_p / open_p) * 100) if open_p > 0 else 100
-    vuln_percent = int((vuln_p / open_p) * 100) if open_p > 0 else 0
+    # Harmonisation globale pour les stats
+    open_p = 0
+    vuln_p = 0
+    for p in ports:
+        if p.get("statut") == "ouvert":
+            open_p += 1
+            has_cve = len(p.get("cves", [])) > 0
+            if p.get("vulnerable") == 1 or has_cve:
+                vuln_p += 1
+                
+    safe_p = open_p - vuln_p
     
     html_ai = markdown_to_html(ai_text)
     
@@ -345,16 +374,35 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                             <th style="width: 25%">SERVICE / DÉTECTION</th>
                             <th style="width: 25%">VERSION DÉTECTÉE</th>
                             <th style="width: 15%">STATUT</th>
-                            <th style="width: 20%">PRÉDICTION ML</th>
+                            <th style="width: 20%">ANALYSE DE SÉCURITÉ</th>
                         </tr>
                     </thead>
                     <tbody>
     """
     
     for p in ports:
-        is_vuln = p.get("vulnerable") == 1
-        label = html.escape(str(p.get("label", "Unknown")))
+        is_vuln_ml = p.get("vulnerable") == 1
+        label_ml = html.escape(str(p.get("label", "Unknown")))
+        cves = p.get("cves", [])
+        has_cve = len(cves) > 0
         
+        # Harmonisation : Si des CVE sont présentes, le service EST vulnérable, peu importe ce que dit le ML
+        if has_cve:
+            is_vuln = True
+            label = "VULNÉRABLE (CVE)"
+            ia_badge_class = "badge-red"
+            ia_icon = "fa-bug"
+        elif is_vuln_ml:
+            is_vuln = True
+            label = "VULNÉRABLE (ML)"
+            ia_badge_class = "badge-red"
+            ia_icon = "fa-bug"
+        else:
+            is_vuln = False
+            label = "SÉCURISÉ"
+            ia_badge_class = "badge-green"
+            ia_icon = "fa-check"
+            
         raw_conf = p.get("confidence", 0)
         conf = round(raw_conf * 100, 1) if raw_conf <= 1.0 else round(raw_conf, 1)
         statut = html.escape(str(p.get("statut", "ouvert")))
@@ -363,9 +411,6 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
         version_esc = html.escape(str(p.get('version', 'N/A')))
         port_num = html.escape(str(p.get('port')))
         proto = html.escape(str(p.get('protocole', 'TCP')))
-        
-        ia_badge_class = "badge-red" if is_vuln else "badge-green"
-        ia_icon = "fa-bug" if is_vuln else "fa-check"
 
         # MITRE
         try:
@@ -399,7 +444,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
                             <td><span style="color: var(--gray); text-transform: capitalize;">{statut}</span></td>
                             <td>
                                 <span class="badge {ia_badge_class}"><i class="fa-solid {ia_icon}"></i> {label}</span>
-                                <div style="color: var(--gray); font-size: 10px; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">Confiance: {conf}%</div>
+                                <div style="color: var(--gray); font-size: 10px; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">ML Confiance: {conf}%</div>
                             </td>
                         </tr>
         """

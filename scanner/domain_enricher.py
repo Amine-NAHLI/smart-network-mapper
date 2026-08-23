@@ -181,6 +181,61 @@ def get_rdap_whois(ip_or_domain: str, timeout: int = 5) -> Dict[str, Any]:
     return info
 
 
+# ──────────────────────────────────────────────────────────────
+# 4. Géolocalisation Physique (IP-API)
+# ──────────────────────────────────────────────────────────────
+def get_ip_geolocation(ip_or_domain: str, timeout: int = 5) -> Dict[str, Any]:
+    """
+    Récupère la géolocalisation exacte (Ville, Pays, FAI) via ip-api.com (gratuit, sans clé).
+    Ne fonctionne bien que pour les IP publiques.
+    """
+    target_ip = ip_or_domain
+    try:
+        # Résoudre en IP si c'est un domaine
+        target_ip = socket.gethostbyname(ip_or_domain)
+    except Exception:
+        pass
+        
+    # Vérifier si l'IP est locale/privée
+    if target_ip.startswith("127.") or target_ip.startswith("192.168.") or target_ip.startswith("10.") or target_ip.startswith("172."):
+        return {
+            "city": "Réseau Local",
+            "country": "N/A",
+            "isp": "N/A",
+            "lat": 0.0,
+            "lon": 0.0,
+            "error": "IP Privée"
+        }
+
+    api_url = f"http://ip-api.com/json/{target_ip}?fields=status,message,country,city,isp,lat,lon"
+    
+    geo_data = {
+        "city": "Inconnu",
+        "country": "Inconnu",
+        "isp": "Inconnu",
+        "lat": 0.0,
+        "lon": 0.0,
+        "error": None
+    }
+    
+    try:
+        req = urllib.request.Request(api_url, headers={"User-Agent": "SmartNetworkMapper/1.1"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data.get("status") == "success":
+                geo_data["city"] = data.get("city", "Inconnu")
+                geo_data["country"] = data.get("country", "Inconnu")
+                geo_data["isp"] = data.get("isp", "Inconnu")
+                geo_data["lat"] = data.get("lat", 0.0)
+                geo_data["lon"] = data.get("lon", 0.0)
+            else:
+                geo_data["error"] = data.get("message", "Erreur API")
+    except Exception as e:
+        geo_data["error"] = str(e)
+        
+    return geo_data
+
+
 def enrich_domain_profile(target: str) -> Dict[str, Any]:
     """
     Agrégateur de reconnaissance OSINT complet pour cibles externes.
@@ -189,5 +244,6 @@ def enrich_domain_profile(target: str) -> Dict[str, Any]:
         "target": target,
         "dns": get_dns_records(target),
         "security_headers": check_security_headers(target),
-        "whois_rdap": get_rdap_whois(target)
+        "whois_rdap": get_rdap_whois(target),
+        "geolocation": get_ip_geolocation(target)
     }
