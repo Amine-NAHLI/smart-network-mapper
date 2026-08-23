@@ -48,6 +48,8 @@ try:
     from model.predictor import predict
     from reporter.html_generator import generate_html_report
     from reporter.telegram_utils import split_telegram_message, format_telegram_chunks
+    from scanner.device_info import get_device_info
+    from scanner.domain_enricher import enrich_domain_profile
 
     init_iana_database()
 except ImportError as e:
@@ -189,6 +191,17 @@ def handle_scan(target_ip, mode):
             _sys.stderr.write(f"[OSINT] Erreur (non bloquante): {str(e)}\n")
             cve_data = {}
 
+    # ── Advanced Recon (OS Fingerprint, WhoIs, HTTP) ──
+    try:
+        device_info = get_device_info(target_clean)
+    except Exception:
+        device_info = {}
+
+    try:
+        domain_info = enrich_domain_profile(target_clean)
+    except Exception:
+        domain_info = {}
+
     # Structuration du rapport JSON final
     date_jour = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     data = { 
@@ -196,6 +209,8 @@ def handle_scan(target_ip, mode):
         "date": date_jour,
         "source": "CLI Auto",
         "total_scanned": len(resultats_bruts),
+        "device_info": device_info,
+        "domain_info": domain_info,
         "ports": []
     }
     
@@ -256,36 +271,17 @@ def handle_scan(target_ip, mode):
     except Exception as e:
         pass
 
-    # Génération du rapport HTML visuel
-    html_path = os.path.join(outputs_dir, "report.html")
-    html_generated = False
-    n8n_dir = os.path.join(os.path.expanduser("~"), ".n8n-files")
-    
-    try:
-        generate_html_report(data, html_path)
-        html_generated = True
-        
-        # Copie dans le dossier autorisé par n8n (.n8n-files) pour contourner l'erreur de permission
-        import shutil
-        os.makedirs(n8n_dir, exist_ok=True)
-        n8n_html_path = os.path.join(n8n_dir, "report.html")
-        shutil.copy(html_path, n8n_html_path)
-        
-        # On donne à n8n le chemin vers le fichier qu'il a le droit de lire
-        html_path = n8n_html_path
-    except Exception as e:
-        pass
-
-    # Génération du rapport d'analyse IA (Groq)
+    # Génération du rapport d'analyse IA (Groq) en PREMIER pour l'injecter dans le HTML
     ai_report_path = os.path.join(outputs_dir, "ai_report.md")
     ai_generated = False
     ai_report_text = ""
+    n8n_dir = os.path.join(os.path.expanduser("~"), ".n8n-files")
+
     try:
         from reporter.ai_generator import generate_ai_report
         generate_ai_report(data, output_path=ai_report_path)
         ai_generated = True
         
-        # Copie dans le dossier autorisé par n8n (.n8n-files) et lecture du texte
         if os.path.exists(ai_report_path):
             with open(ai_report_path, "r", encoding="utf-8") as f:
                 ai_report_text = f.read()
@@ -298,6 +294,27 @@ def handle_scan(target_ip, mode):
     except Exception as e:
         import sys as _sys
         _sys.stderr.write(f"[AI] Erreur génération: {str(e)}\n")
+        
+    # Ajouter le texte IA au dictionnaire pour que le HTML_generator puisse l'utiliser
+    data["ai_report_text"] = ai_report_text
+
+    # Génération du rapport HTML visuel en SECOND
+    html_path = os.path.join(outputs_dir, "report.html")
+    html_generated = False
+    
+    try:
+        generate_html_report(data, html_path)
+        html_generated = True
+        
+        # Copie dans le dossier autorisé par n8n (.n8n-files)
+        import shutil
+        os.makedirs(n8n_dir, exist_ok=True)
+        n8n_html_path = os.path.join(n8n_dir, "report.html")
+        shutil.copy(html_path, n8n_html_path)
+        
+        html_path = n8n_html_path
+    except Exception as e:
+        pass
 
     ai_report_chunks = format_telegram_chunks(split_telegram_message(ai_report_text))
 
