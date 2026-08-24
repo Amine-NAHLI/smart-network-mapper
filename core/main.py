@@ -220,22 +220,58 @@ def save_json(target_ip, resultats, ml_predictions={}):
     """
     from core.paths import ensure_outputs_dir, get_outputs_dir
     ensure_outputs_dir()
+    outputs_dir = get_outputs_dir()
+
+    # ── Advanced Recon (OS Fingerprint, WhoIs, HTTP) ──
+    try:
+        from scanner.device_info import get_device_info
+        device_info = get_device_info(str(target_ip))
+    except Exception:
+        device_info = {}
+
+    try:
+        from scanner.domain_enricher import enrich_domain_profile
+        domain_info = enrich_domain_profile(str(target_ip))
+    except Exception:
+        domain_info = {}
 
     date_jour = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     data = { 
-        "cible": target_ip,
+        "cible": str(target_ip),
         "date": date_jour,
         "source": "CLI Interactive",
+        "total_scanned": len(resultats),
+        "device_info": device_info,
+        "domain_info": domain_info,
         "ports": []
     }
  
+    # Extract open ports for OSINT
+    open_ports = [res for res in resultats if res["statut"] == "ouvert"]
+    
+    # ── Enrichissement OSINT (CVEs) ──
+    cve_data = {}
+    if open_ports:
+        print(f"\n  {Fore.BLUE}[→] Analyse OSINT en cours (Recherche CVEs via NVD)...{Style.RESET_ALL}")
+        try:
+            from scanner.osint_enricher import enrich_with_cves
+            import sys as _sys
+            cve_data = enrich_with_cves(
+                open_ports,
+                progress_callback=lambda svc, idx, total: _sys.stdout.write(f"      [OSINT] ({idx}/{total}) {svc}\r")
+            )
+            print(f"  {Fore.GREEN}[✔] OSINT terminé. CVEs trouvées pour {sum(1 for v in cve_data.values() if v)} service(s).    {Style.RESET_ALL}")
+        except Exception as e:
+            print(f"  {Fore.RED}[✘] Erreur OSINT : {e}{Style.RESET_ALL}")
+
     for res in resultats:
         if res["statut"] == "ouvert":
             port = res["port"]
             proto = res.get("protocole", "TCP")
             port_key = f"{port}:{proto}"
             pred = ml_predictions.get(port_key, {})
+            port_cves = cve_data.get(port, [])
             data["ports"].append({
                 "port": port,
                 "protocole": proto,
@@ -245,11 +281,26 @@ def save_json(target_ip, resultats, ml_predictions={}):
                 "banner": res.get("banner", "N/A"),
                 "vulnerable": pred.get("vulnerable", None),
                 "confidence": pred.get("confidence", None),
-                "label": pred.get("label", "N/A")
+                "label": pred.get("label", "N/A"),
+                "cves": port_cves
             })
 
-    outputs_dir = get_outputs_dir()
+    # ── Génération du rapport IA (Groq) ──
+    ai_report_path = os.path.join(outputs_dir, "ai_report.md")
+    ai_report_text = ""
+    print(f"  {Fore.BLUE}[→] Génération de l'audit expert IA (Groq)...{Style.RESET_ALL}")
+    try:
+        from reporter.ai_generator import generate_ai_report
+        generate_ai_report(data, output_path=ai_report_path)
+        if os.path.exists(ai_report_path):
+            with open(ai_report_path, "r", encoding="utf-8") as f:
+                ai_report_text = f.read()
+            print(f"  {Fore.GREEN}[✔] Audit IA généré avec succès.{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"  {Fore.RED}[✘] Erreur IA : {e}{Style.RESET_ALL}")
     
+    data["ai_report_text"] = ai_report_text
+
     # Sauvegarde horodatée unique pour l'historique permanent
     safe_target = str(target_ip).replace(":", "_").replace("/", "_")
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -286,7 +337,7 @@ def save_json(target_ip, resultats, ml_predictions={}):
     # Génération du rapport HTML Premium
     try:
         from reporter.html_generator import generate_html_report
-        html_path = os.path.join(get_outputs_dir(), "report.html")
+        html_path = os.path.join(outputs_dir, "report.html")
         generate_html_report(data, html_path)
         print(f"  {Fore.GREEN}[✔] Rapport visuel généré : '{html_path}'.{Style.RESET_ALL}")
     except Exception:
