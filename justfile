@@ -1,9 +1,13 @@
 set export
 set windows-powershell := true
 
-# Commande par défaut (liste les commandes)
+# Commande par défaut (affiche l'aide SNM)
 default:
-    @just --list
+    @uv run python snm.py --help
+
+# Afficher le menu d'aide complet
+help:
+    @uv run python snm.py --help
 
 # ──────────────────────────────────────────────────
 #  Setup & Installation
