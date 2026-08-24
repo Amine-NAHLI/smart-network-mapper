@@ -21,6 +21,10 @@ Toute la logique métier est déléguée aux modules :
 
 import sys
 import os
+
+# Ajouter le dossier racine au chemin pour trouver les modules (gui, core, scanner)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import ctypes
 
 try:
