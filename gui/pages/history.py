@@ -70,7 +70,7 @@ class HistoryPage(ctk.CTkFrame):
         self.tree = ttk.Treeview(table_wrap, style="SNM.Treeview", selectmode="browse")
         self.tree["columns"] = ("ID", "TARGET", "DATE", "DURATION",
                                 "OPEN", "VULN", "TOTAL")
-        self.tree.column("#0",       width=0,  stretch="no")
+        self.tree.column("#0",       width=0,  stretch=False)
         self.tree.column("ID",       width=50, anchor="center")
         self.tree.column("TARGET",   width=140, anchor="w")
         self.tree.column("DATE",     width=160, anchor="w")
@@ -96,6 +96,9 @@ class HistoryPage(ctk.CTkFrame):
         self.tree.tag_configure("has_vuln", foreground=RED_DANGER)
         self.tree.tag_configure("safe",     foreground=GREEN_SUCCESS)
         self.tree.tag_configure("normal",   foreground=TEXT_SECONDARY)
+
+        self.tree.bind("<Double-1>", lambda e: self._load_selected())
+        self.tree.bind("<Return>", lambda e: self._load_selected())
 
         # ── Bottom buttons ───────────────────────────────────────
         btns = ctk.CTkFrame(self, fg_color="transparent")
@@ -185,6 +188,7 @@ class HistoryPage(ctk.CTkFrame):
             return
 
         # Injecter les données dans le contexte partagé de l'app
+        self.app.shared_scan_data     = data
         self.app.shared_selected_ip   = data.get("cible", scan["target"])
         self.app.shared_scan_duration = data.get("duration_seconds", scan["duration"])
         self.app.shared_scan_results  = data.get("ports", [])

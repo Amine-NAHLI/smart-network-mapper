@@ -119,6 +119,7 @@ class SmartNetworkMapper(ctk.CTk):
         self.nav_accents = {}
 
         # Shared scan state (written by NewScanPage, read by ResultsPage)
+        self.shared_scan_data     = {}
         self.shared_scan_results  = []
         self.shared_selected_ip   = None
         self.shared_scan_duration = 0.0

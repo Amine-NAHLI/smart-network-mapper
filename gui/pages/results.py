@@ -55,6 +55,24 @@ class ResultsPage(ctk.CTkFrame):
         self.res_dur = ctk.CTkLabel(info, text="DURATION: —",
                                      font=self.app.FONT_MONO_SM, text_color=TEXT_SECONDARY)
         self.res_dur.pack(side="left", padx=12)
+        self.res_dur.pack(side="left", padx=12)
+
+        # Target Intelligence Bar
+        self.intel_bar = ctk.CTkFrame(self, fg_color=NAVY_CARD, border_color=BORDER_COLOR,
+                                       border_width=1, corner_radius=8)
+        self.intel_bar.pack(fill="x", padx=24, pady=(0, 20))
+        
+        self.res_geo = ctk.CTkLabel(self.intel_bar, text="🌍 LOC: N/A", font=self.app.FONT_MONO_SM, text_color=TEXT_SECONDARY)
+        self.res_geo.pack(side="left", padx=16, pady=10)
+        
+        self.res_os = ctk.CTkLabel(self.intel_bar, text="💻 OS: N/A", font=self.app.FONT_MONO_SM, text_color=TEXT_SECONDARY)
+        self.res_os.pack(side="left", padx=12, pady=10)
+
+        self.btn_ai_report = ctk.CTkButton(self.intel_bar, text="[ VOIR L'AUDIT IA ]", font=self.app.FONT_MONO_SM,
+                                           fg_color="transparent", text_color="#a78bfa", border_color="#a78bfa",
+                                           border_width=1, hover_color=NAVY_SIDEBAR, height=28,
+                                           command=self._show_ai_report)
+        self.btn_ai_report.pack(side="right", padx=16, pady=6)
 
         # Badges
         badges = ctk.CTkFrame(self, fg_color="transparent")
@@ -99,7 +117,7 @@ class ResultsPage(ctk.CTkFrame):
 
         self.tree = ttk.Treeview(table_wrap, style="SNM.Treeview", selectmode="browse")
         self.tree["columns"] = ("PORT", "SERVICE", "VERSION", "STATUS", "LABEL", "CONF")
-        self.tree.column("#0", width=0, stretch="no")
+        self.tree.column("#0", width=0, stretch=False)
         self.tree.column("PORT",    width=80,  anchor="w")
         self.tree.column("SERVICE", width=120, anchor="w")
         self.tree.column("VERSION", width=150, anchor="w")
@@ -184,6 +202,25 @@ class ResultsPage(ctk.CTkFrame):
         self.res_date.configure(text=f"DATE: {date_now}")
         self.res_dur.configure(text=f"DURATION: {duration}s")
 
+        # Global Data (OSINT / Geolocation / AI)
+        data = getattr(self.app, "shared_scan_data", {})
+        
+        geo = data.get("domain_info", {}).get("geolocation", {})
+        country = geo.get("country", "")
+        city = geo.get("city", "")
+        loc_str = f"{city}, {country}".strip(", ") if country or city else "Inconnue"
+        self.res_geo.configure(text=f"🌍 LOC: {loc_str}")
+        
+        os_info = data.get("device_info", {}).get("os_family", "")
+        os_str = os_info if os_info else "Inconnu"
+        self.res_os.configure(text=f"💻 OS: {os_str}")
+        
+        ai_text = data.get("ai_report_text", "")
+        if ai_text:
+            self.btn_ai_report.configure(state="normal", text_color="#a78bfa", border_color="#a78bfa")
+        else:
+            self.btn_ai_report.configure(state="disabled", text_color=TEXT_MUTED, border_color=BORDER_COLOR)
+
         # Clear Tree
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -234,6 +271,30 @@ class ResultsPage(ctk.CTkFrame):
         self.badge_vuln.configure(text=str(vuln_count))
         self.badge_safe.configure(text=str(max(0, open_count - vuln_count)))
 
+    def _show_ai_report(self):
+        data = getattr(self.app, "shared_scan_data", {})
+        report_text = data.get("ai_report_text", "")
+        if not report_text:
+            messagebox.showinfo("AI Report", "Aucun rapport IA disponible pour ce scan.")
+            return
+
+        modal = ctk.CTkToplevel(self)
+        modal.title("AUDIT EXPERT IA (GROQ)")
+        modal.geometry("800x600")
+        modal.configure(fg_color=NAVY_BLACK)
+        modal.grab_set()
+
+        top_bar = ctk.CTkFrame(modal, height=44, fg_color=NAVY_SIDEBAR, corner_radius=0)
+        top_bar.pack(fill="x")
+        ctk.CTkLabel(top_bar, text="🧠 AUDIT EXPERT IA — ANALYSE GLOBALE",
+                     font=self.app.FONT_MONO_MD, text_color="#a78bfa").pack(side="left", padx=16)
+
+        textbox = ctk.CTkTextbox(modal, fg_color=NAVY_CARD, text_color=TEXT_PRIMARY,
+                                 font=("Consolas", 12), wrap="word")
+        textbox.pack(fill="both", expand=True, padx=16, pady=16)
+        textbox.insert("1.0", report_text)
+        textbox.configure(state="disabled")
+
     def _on_row_double_click(self, event=None):
         selected_item = self.tree.focus()
         if not selected_item:
@@ -280,11 +341,18 @@ class ResultsPage(ctk.CTkFrame):
         box_id.pack(fill="x", pady=(0, 10), padx=4)
         ctk.CTkLabel(box_id, text="[ IDENTITÉ SERVICE & VERSION ]", font=self.app.FONT_MONO_SM, text_color=CYAN_ACCENT).pack(anchor="w", padx=12, pady=(8, 4))
         
+        data = getattr(self.app, "shared_scan_data", {})
+        os_info = data.get("device_info", {}).get("os_family", "Inconnu")
+        geo = data.get("domain_info", {}).get("geolocation", {})
+        loc_str = f"{geo.get('city', '')}, {geo.get('country', '')}".strip(", ") or "Inconnue"
+
         info_lines = (
             f"• Port / Protocole : {port_str} / {port_data.get('protocole', 'TCP')}\n"
             f"• Service identifié : {port_data.get('service', 'N/A')}\n"
             f"• Version détectée  : {port_data.get('version', 'N/A')}\n"
-            f"• Classification IA : {port_data.get('label', 'N/A')} (Confiance: {port_data.get('confidence', 0)*100:.1f}%)"
+            f"• Classification IA : {port_data.get('label', 'N/A')} (Confiance: {port_data.get('confidence', 0)*100:.1f}%)\n"
+            f"• OS Cible Estimé   : {os_info}\n"
+            f"• Localisation IP   : {loc_str}"
         )
         ctk.CTkLabel(box_id, text=info_lines, font=self.app.FONT_MONO_SM, text_color=TEXT_PRIMARY, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
 
