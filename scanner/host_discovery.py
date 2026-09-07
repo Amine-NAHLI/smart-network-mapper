@@ -190,7 +190,14 @@ def scan_subnet(subnet, timeout=1, max_workers=200, host_callback=None, progress
     arp_results = []
     
     if SCAPY_AVAILABLE:
-        arp_results.extend(arp_scan(subnet, timeout=2))
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(arp_scan, subnet, timeout=2)
+                arp_results.extend(future.result(timeout=4))
+        except concurrent.futures.TimeoutError:
+            sys.stderr.write("[DISCOVERY] Scapy ARP scan timed out/blocked! Fallback to system ARP.\n")
+        except Exception as e:
+            sys.stderr.write(f"[DISCOVERY] Scapy ARP scan error: {e}\n")
         
     # Compléter avec le cache ARP système (fiable sans admin)
     arp_results.extend(system_arp_scan(subnet))

@@ -34,7 +34,8 @@ def print_help():
     
     print(f"\n   {Fore.CYAN}■ Installation & Setup{Style.RESET_ALL}")
     print(f"      {Fore.GREEN}just setup{Style.RESET_ALL}              {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Configure l'environnement virtuel (uv venv + uv sync)")
-    print(f"      {Fore.GREEN}.venv\\Scripts\\activate{Style.RESET_ALL}  {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Active l'environnement virtuel (Windows)")
+    print(f"      {Fore.GREEN}.venv\\Scripts\\activate{Style.RESET_ALL}  {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Active l'environnement virtuel (Windows PowerShell)")
+    print(f"      {Fore.GREEN}source .venv/Scripts/activate{Style.RESET_ALL} {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Active l'environnement virtuel (Git Bash / Linux)")
     
     print(f"\n   {Fore.CYAN}■ Tests & Qualité du code{Style.RESET_ALL}")
     print(f"      {Fore.GREEN}just test{Style.RESET_ALL}               {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance la suite complète de 57 tests pytest")
