@@ -46,6 +46,10 @@ def print_help():
     print(f"      {Fore.GREEN}just build{Style.RESET_ALL}              {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Compile le projet en exécutable .exe")
     print(f"      {Fore.GREEN}just package{Style.RESET_ALL}            {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Crée l'archive ZIP Windows portable")
     
+    print(f"\n   {Fore.CYAN}■ Docker{Style.RESET_ALL}")
+    print(f"      {Fore.GREEN}docker build -t snm .{Style.RESET_ALL}   {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Construit l'image Docker")
+    print(f"      {Fore.GREEN}docker run -it --rm --network host snm{Style.RESET_ALL} {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance le conteneur en mode interactif")
+    
     print(f"\n   {Fore.CYAN}■ Outils Annexes{Style.RESET_ALL}")
     print(f"      {Fore.GREEN}just test-groq{Style.RESET_ALL}          {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Teste la connectivité avec l'API Groq (LLM)")
     print(f"      {Fore.GREEN}just clean{Style.RESET_ALL}              {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Nettoie les caches et fichiers temporaires")
