@@ -157,10 +157,9 @@ cython_debug/
 
 # PyCharm
 #.idea/
-
+SCRIPT_SOUTENANCE_SNM.md
 # Abstra
 .abstra/
-
 # Visual Studio Code
 # .vscode/
 
