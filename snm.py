@@ -15,46 +15,40 @@ except ImportError:
     Fore = Style = DummyColor()
 
 def print_help():
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}╔═════════════════════════════════════════════════════════════════════════╗")
-    print(f"{Fore.CYAN}{Style.BRIGHT}║                   SMART NETWORK MAPPER (SNM) v1.1.0                     ║")
-    print(f"{Fore.CYAN}{Style.BRIGHT}╚═════════════════════════════════════════════════════════════════════════╝\n")
+    print(f"\n{Fore.CYAN}{Style.BRIGHT}╔═════════════════════════════════════════════════════════════════════════════════╗")
+    print(f"{Fore.CYAN}{Style.BRIGHT}║                      SMART NETWORK MAPPER (SNM) v1.1.0                          ║")
+    print(f"{Fore.CYAN}{Style.BRIGHT}╚═════════════════════════════════════════════════════════════════════════════════╝\n")
     
-    print(f"{Fore.YELLOW}{Style.BRIGHT}🚀 DÉMARRAGE DES INTERFACES (GUI & CLI INTERACTIF)")
-    print(f"   {Fore.GREEN}python snm.py gui{Style.RESET_ALL}        {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance l'interface graphique complète (CustomTkinter)")
-    print(f"   {Fore.GREEN}python snm.py cli{Style.RESET_ALL}        {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance l'interface terminal interactive (Menu guidé)")
+    print(f"{Fore.YELLOW}{Style.BRIGHT}🚀 1. EXÉCUTION (Lancement de l'application selon le mode souhaité)")
+    print(f"   {Fore.GREEN}just run{Style.RESET_ALL}  ou  {Fore.GREEN}just gui{Style.RESET_ALL}   (python snm.py gui)   {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance l'interface graphique (CustomTkinter)")
+    print(f"   {Fore.GREEN}just cli{Style.RESET_ALL}              (python snm.py cli)   {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance le terminal interactif guidé")
     print("")
 
-    print(f"{Fore.YELLOW}{Style.BRIGHT}🔍 SCAN AUTOMATIQUE SANS INTERFACE (HEADLESS CLI)")
-    print(f"   {Fore.GREEN}python snm.py --discover{Style.RESET_ALL}                   {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Auto-détecte le LAN et liste les hôtes")
-    print(f"   {Fore.GREEN}python snm.py --target <IP> --mode fast{Style.RESET_ALL}    {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Scan rapide (24 ports) + IA + OSINT")
-    print(f"   {Fore.GREEN}python snm.py --target <IP> --mode full{Style.RESET_ALL}    {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Scan complet (65535 ports) sur la cible")
+    print(f"{Fore.YELLOW}{Style.BRIGHT}🔍 2. SCAN RÉSEAU (Moteur de découverte et d'audit rapide / complet)")
+    print(f"   {Fore.GREEN}just discover{Style.RESET_ALL}         (python snm.py --discover)                {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Auto-découverte des hôtes du LAN (ARP)")
+    print(f"   {Fore.GREEN}just scan-fast <IP>{Style.RESET_ALL}   (python snm.py --target <IP> --mode fast) {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Scan rapide (24 ports) + IA + OSINT")
+    print(f"   {Fore.GREEN}just scan-full <IP>{Style.RESET_ALL}   (python snm.py --target <IP> --mode full) {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Scan complet (65 535 ports) sur la cible")
     print("")
 
-    print(f"{Fore.YELLOW}{Style.BRIGHT}🛠️  COMMANDES 'JUST' (Utilitaires de développement & DevOps)")
-    
-    print(f"\n   {Fore.CYAN}■ Installation & Setup{Style.RESET_ALL}")
-    print(f"      {Fore.GREEN}just setup{Style.RESET_ALL}              {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Configure l'environnement virtuel (uv venv + uv sync)")
-    print(f"      {Fore.GREEN}.venv\\Scripts\\activate{Style.RESET_ALL}  {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Active l'environnement virtuel (Windows PowerShell)")
-    print(f"      {Fore.GREEN}source .venv/Scripts/activate{Style.RESET_ALL} {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Active l'environnement virtuel (Git Bash / Linux)")
-    
-    print(f"\n   {Fore.CYAN}■ Tests & Qualité du code{Style.RESET_ALL}")
-    print(f"      {Fore.GREEN}just test{Style.RESET_ALL}               {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance la suite complète de 57 tests pytest")
-    print(f"      {Fore.GREEN}just lint{Style.RESET_ALL}               {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Vérifie la propreté du code (Ruff / Mypy)")
-    print(f"      {Fore.GREEN}just format{Style.RESET_ALL}             {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Formate le code automatiquement (YAPF)")
-    
-    print(f"\n   {Fore.CYAN}■ Build & Déploiement{Style.RESET_ALL}")
-    print(f"      {Fore.GREEN}just build{Style.RESET_ALL}              {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Compile le projet en exécutable .exe")
-    print(f"      {Fore.GREEN}just package{Style.RESET_ALL}            {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Crée l'archive ZIP Windows portable")
-    
-    print(f"\n   {Fore.CYAN}■ Docker{Style.RESET_ALL}")
-    print(f"      {Fore.GREEN}docker build -t snm .{Style.RESET_ALL}   {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Construit l'image Docker")
-    print(f"      {Fore.GREEN}docker run -it --rm --network host snm{Style.RESET_ALL} {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Lance le conteneur en mode interactif")
-    
-    print(f"\n   {Fore.CYAN}■ Outils Annexes{Style.RESET_ALL}")
-    print(f"      {Fore.GREEN}just test-groq{Style.RESET_ALL}          {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Teste la connectivité avec l'API Groq (LLM)")
-    print(f"      {Fore.GREEN}just clean{Style.RESET_ALL}              {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Nettoie les caches et fichiers temporaires")
-    
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}───────────────────────────────────────────────────────────────────────────\n")
+    print(f"{Fore.YELLOW}{Style.BRIGHT}🧪 3. QUALITÉ DU CODE (Contrôle de stabilité, typage et lisibilité)")
+    print(f"   {Fore.GREEN}just test{Style.RESET_ALL}             {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Exécute la suite complète des 57 tests pytest (100% succès)")
+    print(f"   {Fore.GREEN}just test-verbose{Style.RESET_ALL}     {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Exécute les tests avec affichage détaillé et tracebacks")
+    print(f"   {Fore.GREEN}just lint{Style.RESET_ALL}             {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Analyse statique du code et contrôle des types (Ruff / Mypy)")
+    print(f"   {Fore.GREEN}just format{Style.RESET_ALL}           {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Formate le code automatiquement selon les standards (YAPF)")
+    print("")
+
+    print(f"{Fore.YELLOW}{Style.BRIGHT}📦 4. DISTRIBUTION & PACKAGING (Génération d'exécutable et nettoyage)")
+    print(f"   {Fore.GREEN}just build{Style.RESET_ALL}            {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Compile le projet en exécutable autonome .exe (PyInstaller)")
+    print(f"   {Fore.GREEN}just package{Style.RESET_ALL}          {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Génère l'archive ZIP Windows portable prête à l'emploi")
+    print(f"   {Fore.GREEN}just clean{Style.RESET_ALL}            {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Nettoie les caches (__pycache__, pytest, ruff) et outputs temporaires")
+    print("")
+
+    print(f"{Fore.YELLOW}{Style.BRIGHT}🛠️  5. SETUP & ENVIRONNEMENT")
+    print(f"   {Fore.GREEN}just setup{Style.RESET_ALL}            {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Initialise l'environnement virtuel ultra-rapide (uv sync)")
+    print(f"   {Fore.GREEN}just test-groq{Style.RESET_ALL}       {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Valide la connectivité avec l'API Groq (Llama-3.3-70b)")
+    print(f"   {Fore.GREEN}docker build -t snm .{Style.RESET_ALL} {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Construit l'image conteneurisée multi-stage")
+    print(f"   {Fore.GREEN}docker run -it --rm --network host snm{Style.RESET_ALL} {Fore.LIGHTBLACK_EX}→{Style.RESET_ALL} Exécute SNM en conteneur Docker")
+    print(f"\n{Fore.CYAN}{Style.BRIGHT}─────────────────────────────────────────────────────────────────────────────────\n")
 
 def main():
     if len(sys.argv) == 1 or sys.argv[1] in ["-h", "--help", "help"]:

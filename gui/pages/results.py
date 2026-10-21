@@ -275,6 +275,15 @@ class ResultsPage(ctk.CTkFrame):
         data = getattr(self.app, "shared_scan_data", {})
         report_text = data.get("ai_report_text", "")
         if not report_text:
+            from core.paths import get_outputs_dir
+            ai_md = os.path.join(get_outputs_dir(), "ai_report.md")
+            if os.path.exists(ai_md):
+                try:
+                    with open(ai_md, "r", encoding="utf-8") as f:
+                        report_text = f.read()
+                except Exception:
+                    pass
+        if not report_text:
             messagebox.showinfo("AI Report", "Aucun rapport IA disponible pour ce scan.")
             return
 

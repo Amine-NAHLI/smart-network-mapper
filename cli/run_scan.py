@@ -320,13 +320,20 @@ def handle_scan(target_ip, mode):
     except Exception as e:
         pass
 
-    # Ajout du lien Google Maps pour Telegram si géolocalisation disponible
+    # Ajout du pied de page et localisation GPS pour Telegram si disponible
     try:
         lat = data.get("domain_info", {}).get("geolocation", {}).get("lat", 0.0)
         lon = data.get("domain_info", {}).get("geolocation", {}).get("lon", 0.0)
+        city = data.get("domain_info", {}).get("geolocation", {}).get("city", "")
+        country = data.get("domain_info", {}).get("geolocation", {}).get("country", "")
         if lat and lon and lat != 0.0 and lon != 0.0:
             maps_url = f"https://www.google.com/maps?q={lat},{lon}"
-            ai_report_text += f"\n\n📍 **Localisation GPS** : [Voir sur Google Maps]({maps_url})\n"
+            loc_label = f"{city}, {country}" if city and country else f"{lat}, {lon}"
+            ai_report_text += (
+                f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📍 **Position Géographique :** `{loc_label}`\n"
+                f"🗺️ [Ouvrir la localisation sur Google Maps]({maps_url})\n"
+            )
     except Exception:
         pass
 

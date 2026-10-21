@@ -11,7 +11,7 @@ import os
 def load_dotenv(base_dir: str | None = None) -> None:
     """Charge le fichier .env du projet dans os.environ (sans écraser l'existant)."""
     if base_dir is None:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env_path = os.path.join(base_dir, ".env")
     if not os.path.isfile(env_path):
         return

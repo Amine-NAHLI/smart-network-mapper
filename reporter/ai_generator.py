@@ -66,28 +66,62 @@ def generate_ai_report(scan_data, api_key=None, output_path="outputs/ai_report.m
             "cves_trouvees": cves
         })
 
-    # Construction du prompt en français enrichi MITRE & CISA KEV
+    # Construction du prompt en français enrichi MITRE & CISA KEV optimisé pour Telegram
     prompt = f"""
-Vous êtes un auditeur senior en cybersécurité (expert NIST SP 800-115 et MITRE ATT&CK).
-Analysez les données de scan de vulnérabilités suivantes pour l'hôte cible {target} (effectué le {date}) et rédigez un rapport d'audit de sécurité professionnel, clair et exploitable.
+Vous êtes un auditeur senior en cybersécurité et analyste SOC de référence (expert NIST SP 800-115 et MITRE ATT&CK).
+Votre mission est de rédiger un rapport d'audit de sécurité d'un niveau d'excellence absolu, ULTRA-VISUEL, PARFAITEMENT STRUCTURÉ et AGRÉABLE À LIRE sur Telegram et sur tableau de bord d'incident.
 
-Données du Scan :
+Données Réelles du Scan :
 - Cible : {target}
 - Date du scan : {date}
 - Source d'exécution : {source}
-- Nombre de ports scannés : {total_scanned}
-- Détails des ports ouverts :
+- Nombre total de ports scannés : {total_scanned}
+- Nombre de ports ouverts : {len(ports_to_process)}
+- Détails techniques des services découverts :
 {json.dumps(ports_summary, indent=2, ensure_ascii=False)}
 
 Contexte de Cartographie des Menaces (MITRE ATT&CK & Durcissement) :
 {mitre_context}
 
-Votre rapport doit être rédigé entièrement en français et au format Markdown. Utilisez une structure d'audit industrielle avec les sections suivantes :
-1. **Synthèse de la Sécurité Globale** : Un avis résumé sur le niveau de risque général de la machine (Faible, Moyen, Élevé, Critique). Si des failles CISA KEV (activement exploitées) sont présentes, émettez une alerte d'urgence immédiate.
-2. **Cartographie des Menaces (MITRE ATT&CK) & Analyse par Port** : Pour chaque port ouvert, décrivez le risque d'exposition, la technique MITRE associée (`TXXXX`) et l'analyse des CVEs détectées.
-3. **Plan de Durcissement Priorisé (Playbooks de Remédiation)** : Donnez des recommandations concrètes et ordonnées basées sur les meilleures pratiques de durcissement (fermeture de ports, mise à niveau, configuration TLS, pare-feu, isolation).
+CONSIGNES DE MISE EN PAGE ET DE STYLE (OBLIGATOIRES POUR TELEGRAM) :
+1. Démarrez IMMÉDIATEMENT par le cadre d'en-tête ci-dessous, SANS aucun mot d'introduction ni formule de politesse ("Voici le rapport...").
+2. Utilisez une typographie dynamique avec des séparateurs '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' et des emojis professionnels.
+3. Ne générez AUCUN grand tableau en barres '| col |' (inadapté sur smartphone). Utilisez des fiches à puces claires et aérées.
+4. Encadrez les commandes techniques, services et adresses IP avec des backticks `...` pour une lisibilité maximale.
 
-Soyez concis, professionnel et direct. Tenez-vous rigoureusement aux faits observés lors du scan.
+Structure stricte à respecter mot à mot pour les sections :
+
+╔══════════════════════════════════════════════════╗
+║   🛰️ SMART NETWORK MAPPER — AUDIT DE SÉCURITÉ   ║
+╚══════════════════════════════════════════════════╝
+
+🎯 **CIBLE :** `{target}`  |  📅 **HORODATAGE :** `{date}`
+📊 **SURFACE D'ATTAQUE :** {len(ports_to_process)} port(s) ouvert(s) sur {total_scanned} audités
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 **SYNTHÈSE EXÉCUTIVE & NIVEAU DE RISQUE GLOBAL : [CRITIQUE / ÉLEVÉ / MOYEN / FAIBLE]**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(Rédigez 2 à 3 phrases percutantes évaluant l'exposition globale, le risque d'accès initial ou de mouvement latéral, et signalez en priorité les failles CISA KEV ou expositions de base de données).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 **CARTOGRAPHIE DES SERVICES & ANALYSE DE MENACES**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Pour chaque port ouvert, présentez une fiche claire sous cette forme :
+
+📌 **PORT {{port}}/{{protocole}} — {{SERVICE}}** `({{version}})`
+   • **Statut IA :** 🔴 `VULNÉRABLE` ou 🟢 `SÉCURISÉ` (Confiance : XX%)
+   • **Technique MITRE ATT&CK :** `TXXXX - Nom de la technique`
+   • **Exploit Actif (CISA KEV) :** ⚠️ `OUI (Exploit public actif)` ou `Non`
+   • **CVEs Détectées :** `CVE-XXXX-XXXX` (ou Aucune)
+   • **Diagnostic :** (1 à 2 phrases précises sur le vecteur d'attaque et l'impact)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛠️ **PLAN DE DURCISSEMENT PRIORISÉ (NIST SP 800-115)**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ordonnez les actions concrètes par niveau de criticité (1️⃣ Priorité Immédiate, 2️⃣ Priorité Haute, 3️⃣ Mesure Recommandée) :
+Chaque mesure doit comporter l'action et un bloc de code prêt à copier (ex: configuration pare-feu, mise à niveau de paquet, directive de service).
+
+Soyez rigoureux, concis et d'une précision technique chirurgicale.
 """
 
     # Appel de l'API Groq via urllib
@@ -99,11 +133,11 @@ Soyez concis, professionnel et direct. Tenez-vous rigoureusement aux faits obser
     }
     
     payload = {
-        "model": "openai/gpt-oss-120b",
+        "model": os.environ.get("GROQ_MODEL", "qwen/qwen3.8-27b"),
         "messages": [
             {
                 "role": "system",
-                "content": "Vous êtes un auditeur de cybersécurité professionnel. Rédigez des rapports de vulnérabilités synthétiques, structurés et clairs."
+                "content": "Vous êtes un auditeur de cybersécurité professionnel. Vous produisez des rapports d'audit hautement visuels, synthétiques et percutants, optimisés pour Telegram et les décideurs techniques."
             },
             {
                 "role": "user",

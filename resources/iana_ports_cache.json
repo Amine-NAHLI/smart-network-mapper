@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "last_updated": "2026-08-20T12:41:18.292633+00:00",
-    "timestamp": 1787229678,
-    "total_entries": 11488
+    "last_updated": "2026-10-19T23:04:12.160874+00:00",
+    "timestamp": 1792451052,
+    "total_entries": 11489
   },
   "ports": {
     "1/tcp": {
@@ -31054,12 +31054,12 @@
       "description": "Brocade Virtual Router Request"
     },
     "4416/tcp": {
-      "service": "pjj-player",
-      "description": "PJJ Media Player"
+      "service": "newmood-player",
+      "description": "Newmood Media Player"
     },
     "4416/udp": {
-      "service": "pjj-player-disc",
-      "description": "PJJ Media Player discovery"
+      "service": "newmood-player",
+      "description": "Newmood Media Player discovery"
     },
     "4417/tcp": {
       "service": "workflowdir",
@@ -32548,6 +32548,10 @@
     "4915/tcp": {
       "service": "frcs",
       "description": "Fibics Remote Control Service"
+    },
+    "4930/tcp": {
+      "service": "fmsg",
+      "description": "Host-to-host messaging"
     },
     "4936/udp": {
       "service": "an-signaling",
@@ -34630,8 +34634,8 @@
       "description": "Matter Operational Discovery and Communi"
     },
     "5543/tcp": {
-      "service": "qftest-licserve",
-      "description": "QF-Test License Server"
+      "service": "qftest-lic-mcp",
+      "description": "QF-Test License Server / QF-Test MCP Server"
     },
     "5550/tcp": {
       "service": "cbus",
@@ -58113,10 +58117,7 @@
     "brcd-vr-req": [
       4415
     ],
-    "pjj-player": [
-      4416
-    ],
-    "pjj-player-disc": [
+    "newmood-player": [
       4416
     ],
     "workflowdir": [
@@ -58799,6 +58800,9 @@
     ],
     "frcs": [
       4915
+    ],
+    "fmsg": [
+      4930
     ],
     "an-signaling": [
       4936
@@ -59736,7 +59740,7 @@
     "matter": [
       5540
     ],
-    "qftest-licserve": [
+    "qftest-lic-mcp": [
       5543
     ],
     "cbus": [

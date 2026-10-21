@@ -556,6 +556,7 @@ class NewScanPage(ctk.CTkFrame):
         self.app.shared_scan_results   = self.scan_results
         self.app.shared_selected_ip    = self.selected_ip
         self.app.shared_scan_duration  = self.scan_duration
+        self.app.shared_scan_data      = getattr(self, "latest_scan_data", {})
 
         self.launch_btn.configure(state="normal", text="[ LAUNCH SCAN ]", fg_color=CYAN_ACCENT)
         self.view_results_btn.pack(pady=(4, 16))
@@ -587,6 +588,20 @@ class NewScanPage(ctk.CTkFrame):
                 for r in open_only
             ],
         }
+
+        # Génération du rapport IA (Groq) si ports ouverts
+        ai_report_text = ""
+        try:
+            from reporter.ai_generator import generate_ai_report
+            ai_report_path = os.path.join(outputs_dir, "ai_report.md")
+            generate_ai_report(data, output_path=ai_report_path)
+            if os.path.exists(ai_report_path):
+                with open(ai_report_path, "r", encoding="utf-8") as f:
+                    ai_report_text = f.read()
+        except Exception:
+            pass
+        data["ai_report_text"] = ai_report_text
+        self.latest_scan_data = data
 
         # Sauvegarde horodatée unique pour l'historique permanent
         safe_ip = ip.replace(":", "_").replace("/", "_")

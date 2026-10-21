@@ -23,7 +23,11 @@ import sys
 import os
 
 # Ajouter le dossier racine au chemin pour trouver les modules (gui, core, scanner)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+from core.env import load_dotenv
+load_dotenv(project_root)
 
 import ctypes
 

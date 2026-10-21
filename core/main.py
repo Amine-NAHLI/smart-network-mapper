@@ -2,7 +2,11 @@ import sys #arreter le prog proprement au cas d'erreur
 import os #cree le dossier des outpus si il nexsite pas
 
 # Ajouter le dossier racine au chemin pour trouver le module 'scanner'
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+from core.env import load_dotenv
+load_dotenv(project_root)
 
 import json #pour sauvegarder les resultats JSON
 # import requests (supprimé car l'IA est maintenant appelée localement)

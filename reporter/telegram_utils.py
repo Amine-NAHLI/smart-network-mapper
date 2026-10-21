@@ -42,8 +42,12 @@ def split_telegram_message(text: str, max_length: int = TELEGRAM_SAFE_LENGTH) ->
 
 
 def format_telegram_chunks(chunks: list[str]) -> list[str]:
-    """Ajoute un en-tête de pagination si le message est découpé."""
+    """Ajoute un en-tête de pagination visuel si le message est découpé."""
     total = len(chunks)
     if total <= 1:
         return chunks
-    return [f"📄 Rapport IA ({i + 1}/{total})\n\n{chunk}" for i, chunk in enumerate(chunks)]
+    return [
+        f"📄 **RAPPORT D'AUDIT CYBER — Partie [{i + 1}/{total}]**\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n{chunk}"
+        for i, chunk in enumerate(chunks)
+    ]

@@ -24,6 +24,14 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
     device_info = scan_data.get("device_info", {})
     domain_info = scan_data.get("domain_info", {})
     ai_text = scan_data.get("ai_report_text", "")
+    if not ai_text:
+        ai_report_file = os.path.join(os.path.dirname(output_path), "ai_report.md")
+        if os.path.isfile(ai_report_file):
+            try:
+                with open(ai_report_file, "r", encoding="utf-8") as f:
+                    ai_text = f.read()
+            except Exception:
+                pass
     
     os_name = device_info.get("os", "Inconnu") if device_info else "Inconnu"
     
@@ -358,7 +366,7 @@ def generate_html_report(scan_data, output_path="outputs/report.html"):
 
             <!-- AI AUDIT -->
             <div class="panel" style="border-top: 3px solid var(--purple);">
-                <h2><i class="fa-solid fa-brain" style="color: var(--purple);"></i> Audit Expert IA (GPT-OSS-120b)</h2>
+                <h2><i class="fa-solid fa-brain" style="color: var(--purple);"></i> Audit Expert IA (Groq - Qwen 27B)</h2>
                 <div class="ai-content">
                     {html_ai}
                 </div>

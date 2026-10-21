@@ -5,7 +5,7 @@ import json
 
 from core.env import load_dotenv
 
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(project_root)
 
 api_key = os.environ.get('GROQ_API_KEY')
@@ -19,7 +19,7 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 payload = {
-    "model": "llama-3.3-70b-versatile",
+    "model": os.environ.get("GROQ_MODEL", "qwen/qwen3.8-27b"),
     "messages": [{"role": "user", "content": "Hello"}],
     "temperature": 0.2,
     "max_tokens": 10
